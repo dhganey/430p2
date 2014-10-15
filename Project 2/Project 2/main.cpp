@@ -6,19 +6,21 @@
 #include "main.h"
 
 const std::string whitespace = " \t\f\v\n\r";
+int currentFunction; //number used to differentiate newly created functions
+std::vector<std::string> newFunctions;
+std::vector<std::string> input;
 
 int main()
 {
+	currentFunction = 0;
+
 	std::vector<std::string> input;
 	readInput(input);
 	//printVector(input);
 
 	std::vector<std::string> output;
-	bool foundPragma;
-	do
-	{
-		foundPragma = processPragmas(input, output);
-	} while (foundPragma);
+	
+	processPragmas(input, output);
 
 	printVector(output);
 }
@@ -147,6 +149,8 @@ int getNumThreads(std::string str)
 			}
 		}
 	}
+
+	return 666; //todo check this error case
 }
 
 int getNumIterations(std::string str)
