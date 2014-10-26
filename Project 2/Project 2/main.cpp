@@ -75,17 +75,40 @@ bool processParallel()
 
 void parallelHelper(int start, int end)
 {
+	//create a vector for the new pthreads void* function
 	std::vector<std::string> newFunction;
 	std::string newFuncName;
 	std::string temp = "void* func";
 	newFuncName.append(temp).append(std::to_string(currentFunction)).append("(void* param)");
 	newFunction.push_back(newFuncName);
+	currentFunction++;
 
+	//grab the necessary values from the #pragma line
 	std::string pragmaString = input.at(start);
 	std::vector<std::string> privVars = getConstructVars(pragmaString, "private");
 	std::vector<std::string> sharedVars = getConstructVars(pragmaString, "shared");
+	int numThreads = getNumIterations(pragmaString);
 
-	//TODO: do something with these
+	//copy the code from the parallel to the new function
+	for (int i = start + 1; i <= end; i++) //move start up to hit bracket, <= end to include last bracket
+	{
+		newFunction.push_back(input.at(i));
+	}
+
+	//TODO
+	//need to parse the copied code to change values to use the *param
+	//need to set up the param and the tids
+	//then need to replace the #pragma parallel region in input vector with a for loop from 0 to numThreads creating new pthreads
+	//then that's really it for the parallel! except accounting for nested parallelism... which im tempted to ignore
+	if (privVars.size() > 0)
+	{
+
+	}
+
+	if (sharedVars.size() > 0)
+	{
+
+	}
 }
 
 void readInput()
