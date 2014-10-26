@@ -4,11 +4,17 @@
 
 int main()
 {
-	int i, n;
+	int id;
 
-#pragma omp parallel for num_threads(4)
-	for( i = 0; i < 16; i++ )
-		printf( "Thread %d executes loop iteration %d\n", omp_get_thread_num(), i );
+	#pragma omp parallel private(id) num_threads(16)
+	{
+		id = omp_get_thread_num();
+
+		printf( "The parallel region is executed by thread %d\n", id );
+
+		if( id == 2 )
+			printf( "   Thread %d does things differently\n", id );
+	}
 
 	return(0);
 }
