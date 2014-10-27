@@ -7,16 +7,16 @@
 
 const std::string whitespace = " \t\f\v\n\r";
 int currentFunction; //number used to differentiate newly created functions
+int uniqueVarNum; //number used to ensure created loop vars don't contradict
 std::vector<std::string> input;
-std::vector<std::string> output;
 
 int main()
 {
 	currentFunction = 1;
+	uniqueVarNum = 1;
 
-	std::vector<std::string> input;
 	readInput();
-	printVector(input);
+	//printVector(input);
 
 	//First, handle parallels
 	bool foundParallel = true;
@@ -87,7 +87,7 @@ void parallelHelper(int start, int end)
 	std::string pragmaString = input.at(start);
 	std::vector<std::string> privVars = getConstructVars(pragmaString, "private");
 	std::vector<std::string> sharedVars = getConstructVars(pragmaString, "shared");
-	int numThreads = getNumIterations(pragmaString);
+	int numThreads = getNumThreads(pragmaString);
 
 	//copy the code from the parallel to the new function
 	for (int i = start + 1; i <= end; i++) //move start up to hit bracket, <= end to include last bracket
@@ -95,19 +95,49 @@ void parallelHelper(int start, int end)
 		newFunction.push_back(input.at(i));
 	}
 
-	//TODO
-	//need to parse the copied code to change values to use the *param
-	//need to set up the param and the tids
-	//then need to replace the #pragma parallel region in input vector with a for loop from 0 to numThreads creating new pthreads
-	//then that's really it for the parallel! except accounting for nested parallelism... which im tempted to ignore
-	if (privVars.size() > 0)
-	{
+	//delete the #pragma section
+	input.erase(input.begin() + start, input.begin() + end + 1);
 
+	//set up the pthreads code
+	//first we need an array of pthread_t threadids with size = numthreads
+	int newOffset = start;
+	std::string tempString = std::string("pthread_t threads[").append(std::to_string(numThreads)).append("];");
+	input.insert(input.begin() + newOffset++, tempString);
+
+	//now set up a for loop to dispatch a pthread for each thread
+	std::string loopVar = std::string("uniqueVar").append(std::to_string(uniqueVarNum));
+	uniqueVarNum++;
+	tempString = std::string("for (int ").append(loopVar).append(" = 0; ").append(loopVar).append(" < ").append(std::to_string(numThreads)).append("; ").append(loopVar).append("++)");
+	input.insert(input.begin() + newOffset++, tempString);
+	tempString = "{";
+	input.insert(input.begin() + newOffset++, tempString);
+	//TODO create the tempString based on the params
+	//tempString = std::string("pthread_create(&threads[").append(loopVar).append("], NULL, func").append(std::to_string(currentFunction)).append(", (void*)")
+	//TODO parse out references to private/shared vars like "id" in par.cc example
+
+	//insert the newfunction
+	insertAfterIncludes(newFunction);
+
+	printVector(input);
+}
+
+void insertAfterIncludes(std::vector<std::string>& vecRef)
+{
+	//move past any includes
+	int i;
+	for (i = 0; i < input.size(); i++)
+	{
+		if (input.at(i).length() > 0 && input.at(i).at(0) != '#')
+		{
+			break;
+		}
 	}
 
-	if (sharedVars.size() > 0)
+	//once we're here, we're past the includes and we can copy the new function
+	//for some reason, we need to insert this in reverse order
+	for (int j = vecRef.size()-1; j >= 0; j--)
 	{
-
+		input.insert(input.begin() + i, vecRef.at(j));
 	}
 }
 

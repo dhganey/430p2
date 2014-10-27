@@ -14,3 +14,5 @@ std::vector<std::string> getConstructVars(std::string str, std::string criteria)
 
 bool processParallel();
 void parallelHelper(int start, int end);
+
+void insertAfterIncludes(std::vector<std::string>& vecRef);
