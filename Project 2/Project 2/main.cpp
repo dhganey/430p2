@@ -2,6 +2,7 @@
 #include <string>
 #include <vector>
 #include <sstream>
+#include <map>
 
 #include "main.h"
 
@@ -9,6 +10,7 @@ const std::string whitespace = " \t\f\v\n\r";
 int currentFunction; //number used to differentiate newly created functions
 int uniqueVarNum; //number used to ensure created loop vars don't contradict
 std::vector<std::string> input;
+std::map < std::string, std::string> varsAndTypes;
 
 int main()
 {
@@ -17,6 +19,9 @@ int main()
 
 	readInput();
 	//printVector(input);
+
+	//find variable declarations
+	processVariables();
 
 	//First, handle parallels
 	bool foundParallel = true;
@@ -266,4 +271,32 @@ std::vector<std::string> getConstructVars(std::string str, std::string criteria)
 	}
 
 	return privVars;
+}
+
+void processVariables()
+{
+	const std::string intStr = "int";
+	const std::string doubleStr = "double";
+
+	for (int i = 0; i < input.size(); i++)
+	{
+		std::string curStr = input.at(i);
+		if (curStr.substr(0, 3).compare("int") == 0) //integer declaration
+		{
+			if (curStr.substr(0, curStr.length()).compare("int main()") == 0)
+			{
+				//do nothing for main
+			}
+			else
+			{
+				std::string varName = curStr.substr(4, (curStr.length() - 5)); //5 to account for "int " plus the semicolon
+				varsAndTypes[varName] = intStr;
+			}
+		}
+		else if (curStr.substr(0, 6).compare("double") == 0) //double declaration
+		{
+			std::string varName = curStr.substr(7, (curStr.length() - 8));
+			varsAndTypes[varName] = doubleStr;
+		}
+	}
 }

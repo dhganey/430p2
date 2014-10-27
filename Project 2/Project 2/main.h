@@ -12,6 +12,7 @@ int getNumThreads(std::string str);
 int getNumIterations(std::string str);
 std::vector<std::string> getConstructVars(std::string str, std::string criteria);
 
+void processVariables();
 bool processParallel();
 void parallelHelper(int start, int end);
 
