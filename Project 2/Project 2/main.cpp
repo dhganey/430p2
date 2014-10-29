@@ -9,6 +9,7 @@
 const std::string whitespace = " \t\f\v\n\r";
 int currentFunction; //number used to differentiate newly created functions
 int uniqueVarNum; //number used to ensure created loop vars don't contradict
+int uniqueStructNum; //number used to ensure created structs don't contradict
 std::vector<std::string> input;
 std::map < std::string, std::string> varsAndTypes;
 
@@ -16,6 +17,7 @@ int main()
 {
 	currentFunction = 1;
 	uniqueVarNum = 1;
+	uniqueStructNum = 1;
 
 	readInput();
 	//printVector(input);
@@ -82,9 +84,9 @@ void parallelHelper(int start, int end)
 {
 	//create a vector for the new pthreads void* function
 	std::vector<std::string> newFunction;
+
 	std::string newFuncName;
-	std::string temp = "void* func";
-	newFuncName.append(temp).append(std::to_string(currentFunction)).append("(void* param)");
+	newFuncName.append("void* func").append(std::to_string(currentFunction)).append("(void* param)");
 	newFunction.push_back(newFuncName);
 	currentFunction++;
 
@@ -93,6 +95,28 @@ void parallelHelper(int start, int end)
 	std::vector<std::string> privVars = getConstructVars(pragmaString, "private");
 	std::vector<std::string> sharedVars = getConstructVars(pragmaString, "shared");
 	int numThreads = getNumThreads(pragmaString);
+
+	//TODO shared vars
+
+	//process private variables
+	std::vector<std::string> newStruct;
+	if (privVars.size() > 0)
+	{
+		//for each privateVar, we need to save it to a struct. first, create the struct
+		std::string structStr = std::string("struct Struct").append(std::to_string(uniqueStructNum++));
+		newStruct.push_back(structStr);
+		newStruct.push_back("{");
+		//now for each private variable, create an attribute in the struct
+		for (int i = 0; i < privVars.size(); i++)
+		{
+			//first, determine the type of the variable using our varmap
+			std::string varType = varsAndTypes[privVars.at(i)];
+			//now, add it to the newStruct
+			structStr = varType.append(" ").append(privVars.at(i)).append(";");
+			newStruct.push_back(structStr);
+		}
+		newStruct.push_back("}");
+	}
 
 	//copy the code from the parallel to the new function
 	for (int i = start + 1; i <= end; i++) //move start up to hit bracket, <= end to include last bracket
@@ -104,6 +128,7 @@ void parallelHelper(int start, int end)
 	input.erase(input.begin() + start, input.begin() + end + 1);
 
 	//set up the pthreads code
+	//record the offset as start since we're going to be changing the size of the vector
 	//first we need an array of pthread_t threadids with size = numthreads
 	int newOffset = start;
 	std::string tempString = std::string("pthread_t threads[").append(std::to_string(numThreads)).append("];");
@@ -118,10 +143,14 @@ void parallelHelper(int start, int end)
 	input.insert(input.begin() + newOffset++, tempString);
 	//TODO create the tempString based on the params
 	//tempString = std::string("pthread_create(&threads[").append(loopVar).append("], NULL, func").append(std::to_string(currentFunction)).append(", (void*)")
-	//TODO parse out references to private/shared vars like "id" in par.cc example
 
-	//insert the newfunction
-	insertAfterIncludes(newFunction);
+	//insert the new stuff, in reverse order!!
+	insertAfterIncludes(newFunction); //first, new function
+
+	if (newStruct.size() > 0) //above that, new struct (if necessary)
+	{
+		insertAfterIncludes(newStruct);
+	}
 
 	printVector(input);
 }
