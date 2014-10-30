@@ -17,3 +17,5 @@ bool processParallel();
 void parallelHelper(int start, int end);
 
 void insertAfterIncludes(std::vector<std::string>& vecRef);
+
+std::vector<std::string> getNewStructPriv(std::vector<std::string>& privVars, std::string& newStructName);
