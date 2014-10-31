@@ -376,7 +376,7 @@ void parallelForHelper(int start, int end)
 		{
 			endIteration = numIterations;
 		}
-		tempString = std::string("paramStruct").append(std::to_string(i)).append(".end = ").append(std::to_string(endIteration)).append(";");
+		tempString = std::string("paramStruct").append(std::to_string(i)).append(".end = ").append(std::to_string(endIteration + 1)).append(";"); //plus 1 since for loop is < 
 		input.insert(input.begin() + newOffset++, tempString);
 		endIteration += basicNum;
 
