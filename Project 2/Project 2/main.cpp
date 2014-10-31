@@ -339,14 +339,12 @@ void parallelForHelper(int start, int end)
 	//4-7 thread 2
 	//8-11 thread 3
 	//12-17 thread 4
+	//or 12-14 thread 4
 
 	int startIteration = 0;
 	int endIteration = basicNum - 1;
 	for (int i = 0; i < numThreads; i++)
 	{
-		//TODO this is close, but i just cant figure it out right now
-		//need to know when to add basicnum and when to add uneven to enditeration
-		//please also consider the situation of 14 iterations in 4 threads in addition to 18
 		tempString = std::string("StartEnd paramStruct").append(std::to_string(i)).append(";");
 		input.insert(input.begin() + newOffset++, tempString);
 
@@ -354,9 +352,16 @@ void parallelForHelper(int start, int end)
 		input.insert(input.begin() + newOffset++, tempString);
 		startIteration += basicNum;
 
+		if (i == numThreads - 1) //if we're on the last loop, give all remaining iterations to this thread.
+		{
+			endIteration = numIterations;
+		}
 		tempString = std::string("paramStruct").append(std::to_string(i)).append("->end = ").append(std::to_string(endIteration));
 		input.insert(input.begin() + newOffset++, tempString);
-		tempString = std::string("pthread_create(threads[").append(std::to_string(i)).append("], NULL, ").append(smallNewFuncName).append(", (void*) paramStruct").append(std::to_string(i).append(";");
+		endIteration += basicNum;
+
+		tempString = std::string("pthread_create(threads[").append(std::to_string(i)).append("], NULL, ").append(smallNewFuncName).append(", (void*) paramStruct").append(std::to_string(i)).append(");");
+		input.insert(input.begin() + newOffset++, tempString);
 	}
 
 	//insert the new stuff, in reverse order!!
