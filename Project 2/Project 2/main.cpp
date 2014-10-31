@@ -23,6 +23,8 @@ int main()
 	readInput();
 	//printVector(input);
 
+	input.insert(input.begin(), "#include <pthread.h>");
+
 	//find variable declarations
 	processVariables();
 
@@ -116,7 +118,7 @@ void parallelHelper(int start, int end)
 	//new function statements. start by grabbing the value from the *param
 	std::string structStr = newStructName.substr(7, newStructName.length()).append("* paramStruct;"); //use substr to remove the word "struct"
 	newFunction.push_back(structStr);
-	structStr = std::string("paramStruct = (").append(newStructName).append("*) param;");
+	structStr = std::string("paramStruct = (").append(newStructName.substr(7, newStructName.length())).append("*) param;");
 	newFunction.push_back(structStr);
 
 	//copy the code from the parallel to the new function
@@ -145,11 +147,11 @@ void parallelHelper(int start, int end)
 	int newOffset = start;
 
 	//set up the paramstruct
-	structStr = newStructName.append(" paramStruct;");
+	structStr = newStructName.substr(7, newStruct.max_size()).append(" paramStruct;");
 	input.insert(input.begin() + newOffset++, structStr);
 	for (int i = 0; i < privVars.size(); i++) //preserve each privVar in the struct, which should already be setup
 	{
-		structStr = std::string("paramStruct.").append(privVars.at(i)).append(" = ").append(privVars.at(i));
+		structStr = std::string("paramStruct.").append(privVars.at(i)).append(" = ").append(privVars.at(i)).append(";");
 		input.insert(input.begin() + newOffset++, structStr);
 	}
 
@@ -164,7 +166,7 @@ void parallelHelper(int start, int end)
 	tempString = std::string("for (int ").append(loopVar).append(" = 0; ").append(loopVar).append(" < ").append(std::to_string(numThreads)).append("; ").append(loopVar).append("++)");
 	input.insert(input.begin() + newOffset++, tempString);
 	input.insert(input.begin() + newOffset++, "{");
-	tempString = std::string("pthread_create(&threads[").append(loopVar).append("], NULL, ").append(smallNewFuncName).append(", (void*) &paramStruct)");
+	tempString = std::string("pthread_create(&threads[").append(loopVar).append("], NULL, ").append(smallNewFuncName).append(", (void*) &paramStruct);");
 	input.insert(input.begin() + newOffset++, tempString);
 	input.insert(input.begin() + newOffset++, "}");
 
@@ -227,96 +229,9 @@ bool processParallelFor()
 
 }
 
-//TODO TONITE
+//TODO IMPLEMENT PARALLELFORHELPER
 void parallelForHelper(int start, int end)
 {
-	//grab the necessary values from the #pragma line
-	std::string pragmaString = input.at(start);
-	std::vector<std::string> privVars = getConstructVars(pragmaString, "private");
-	std::vector<std::string> sharedVars = getConstructVars(pragmaString, "shared");
-	int numThreads = getNumThreads(pragmaString);
-
-	//TODO shared vars
-
-	//process private variables
-	std::string newStructName;
-	std::vector<std::string> newStruct = getNewStructPriv(privVars, newStructName);
-
-	//create a vector for the new pthreads void* function
-	std::vector<std::string> newFunction;
-
-	std::string newFuncName;
-	std::string smallNewFuncName = std::string("func").append(std::to_string(currentFunction));
-	newFuncName.append("void* func").append(std::to_string(currentFunction)).append("(void* param)");
-	newFunction.push_back(newFuncName);
-	currentFunction++;
-	newFunction.push_back("{");
-
-	//new function statements. start by grabbing the value from the *param
-	std::string structStr = newStructName.substr(7, newStructName.length()).append("* paramStruct;"); //use substr to remove the word "struct"
-	newFunction.push_back(structStr);
-	structStr = std::string("paramStruct = (").append(newStructName).append("*) param;");
-	newFunction.push_back(structStr);
-
-	//copy the code from the parallel to the new function
-	std::string paramStr = "paramStruct->";
-	for (int i = start + 2; i < end; i++) //move start up to pass first bracket, < end to not include last bracket.
-	{
-		std::string curStr = input.at(i);
-
-		for (int j = 0; j < privVars.size(); j++) //parse the line looking for each private var use
-		{
-			std::size_t pos = curStr.find(privVars.at(j));
-			if (pos != std::string::npos) //if we found something
-			{
-				curStr.insert(pos, paramStr);
-			}
-		}
-
-		newFunction.push_back(curStr);
-	}
-	newFunction.push_back("}");
-
-	//delete the #pragma section
-	input.erase(input.begin() + start, input.begin() + end + 1);
-
-	//record the offset as start since we're going to be changing the size of the vector
-	int newOffset = start;
-
-	//set up the paramstruct
-	structStr = newStructName.append(" paramStruct;");
-	input.insert(input.begin() + newOffset++, structStr);
-	for (int i = 0; i < privVars.size(); i++) //preserve each privVar in the struct, which should already be setup
-	{
-		structStr = std::string("paramStruct.").append(privVars.at(i)).append(" = ").append(privVars.at(i));
-		input.insert(input.begin() + newOffset++, structStr);
-	}
-
-	//set up the pthreads code
-	//first we need an array of pthread_t threadids with size = numthreads
-	std::string tempString = std::string("pthread_t threads[").append(std::to_string(numThreads)).append("];"); //TODO do we need to populate this?
-	input.insert(input.begin() + newOffset++, tempString);
-
-	//now set up a for loop to dispatch a pthread for each thread
-	//TODO this part is DIFFERENT FOR FOR LOOPS OMG YOU CANT JUST DO THE SAME THIGN DAVID FIX THIS TONITE
-	std::string loopVar = std::string("uniqueVar").append(std::to_string(uniqueVarNum));
-	uniqueVarNum++;
-	tempString = std::string("for (int ").append(loopVar).append(" = 0; ").append(loopVar).append(" < ").append(std::to_string(numThreads)).append("; ").append(loopVar).append("++)");
-	input.insert(input.begin() + newOffset++, tempString);
-	input.insert(input.begin() + newOffset++, "{");
-	tempString = std::string("pthread_create(&threads[").append(loopVar).append("], NULL, ").append(smallNewFuncName).append(", (void*) &paramStruct)");
-	input.insert(input.begin() + newOffset++, tempString);
-	input.insert(input.begin() + newOffset++, "}");
-
-	//insert the new stuff, in reverse order!!
-	insertAfterIncludes(newFunction); //first, new function
-
-	if (newStruct.size() > 0) //above that, new struct (if necessary)
-	{
-		insertAfterIncludes(newStruct);
-	}
-
-	printVector(input);
 
 }
 
