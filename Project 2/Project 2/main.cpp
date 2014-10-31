@@ -28,9 +28,6 @@ int main()
 	//find variable declarations
 	processVariables();
 
-	//now, change all omp_get_thread_num calls to pthread_self()
-	processGetThreadNum();
-
 	//First, handle parallels
 	bool foundConstruct = true;
 	while (foundConstruct)
@@ -44,6 +41,9 @@ int main()
 	{
 		foundConstruct = processParallelFor();
 	}
+
+	//last, change all omp_get_thread_num calls to pthread_self()
+	processGetThreadNum();
 }
 
 //Returns true if it processes something
@@ -102,44 +102,47 @@ void parallelHelper(int start, int end)
 	std::vector<std::string> sharedVars = getConstructVars(pragmaString, "shared");
 	int numThreads = getNumThreads(pragmaString);
 
-	//TODO shared vars
-
-	//process private variables
-	std::string newStructName;
-	std::vector<std::string> newStruct = getNewStructPriv(privVars, newStructName);
-
 	//create a vector for the new pthreads void* function
 	std::vector<std::string> newFunction;
 
 	std::string newFuncName;
 	std::string smallNewFuncName = std::string("func").append(std::to_string(currentFunction));
-	newFuncName.append("void* func").append(std::to_string(currentFunction)).append("(void* param)");
+	newFuncName.append("void* func").append(std::to_string(currentFunction)).append("()"); //no parameter
 	newFunction.push_back(newFuncName);
 	currentFunction++;
 	newFunction.push_back("{");
 
-	//new function statements. start by grabbing the value from the *param
-	std::string structStr = newStructName.substr(7, newStructName.length()).append("* paramStruct;"); //use substr to remove the word "struct"
-	newFunction.push_back(structStr);
-	structStr = std::string("paramStruct = (").append(newStructName.substr(7, newStructName.length())).append("*) param;");
-	newFunction.push_back(structStr);
-
-	//copy the code from the parallel to the new function
-	std::string paramStr = "paramStruct->";
-	for (int i = start + 2; i < end; i++) //move start up to pass first bracket, < end to not include last bracket.
+	//redeclare all private vars
+	for (int i = 0; i < privVars.size(); i++)
 	{
-		std::string curStr = input.at(i);
+		std::string typeStr = varsAndTypes[privVars.at(i)];
+		std::string newLine = typeStr.append(" ").append(privVars.at(i)).append(";");
+		newFunction.push_back(newLine);
+	}
 
-		for (int j = 0; j < privVars.size(); j++) //parse the line looking for each private var use
+	//move all shared var declarations to the top of the file
+	std::vector<std::string> globalvars;
+	for (int i = 0; i < sharedVars.size(); i++) //for each shared var
+	{
+		for (int j = 0; j < input.size(); j++) //look through the file
 		{
-			std::size_t pos = curStr.find(privVars.at(j));
-			if (pos != std::string::npos) //if we found something
+			std::string typeStr = varsAndTypes[sharedVars.at(i)];
+			std::string declStr = typeStr.append(" ").append(sharedVars.at(i));
+			if (declStr.length() < input.at(j).length()) //if the line could possibly contain the declaration
 			{
-				curStr.insert(pos, paramStr);
+				if (input.at(j).substr(0, declStr.length()).compare(declStr) == 0) //if it contains the declaration
+				{
+					globalvars.push_back(input.at(j));
+					//instead of erasing the declaration, it's easier to just comment it out:
+					input.at(j) = std::string("//").append(input.at(j));
+				}
 			}
 		}
+	}
 
-		newFunction.push_back(curStr);
+	for (int i = start + 2; i < end; i++) //move start up to pass first bracket, < end to not include last bracket.
+	{
+		newFunction.push_back(input.at(i));
 	}
 	newFunction.push_back("}");
 
@@ -148,15 +151,6 @@ void parallelHelper(int start, int end)
 
 	//record the offset as start since we're going to be changing the size of the vector
 	int newOffset = start;
-
-	//set up the paramstruct
-	structStr = newStructName.substr(7, newStruct.max_size()).append(" paramStruct;");
-	input.insert(input.begin() + newOffset++, structStr);
-	for (int i = 0; i < privVars.size(); i++) //preserve each privVar in the struct, which should already be setup
-	{
-		structStr = std::string("paramStruct.").append(privVars.at(i)).append(" = ").append(privVars.at(i)).append(";");
-		input.insert(input.begin() + newOffset++, structStr);
-	}
 
 	//set up the pthreads code
 	//first we need an array of pthread_t threadids with size = numthreads
@@ -169,7 +163,7 @@ void parallelHelper(int start, int end)
 	tempString = std::string("for (int ").append(loopVar).append(" = 0; ").append(loopVar).append(" < ").append(std::to_string(numThreads)).append("; ").append(loopVar).append("++)");
 	input.insert(input.begin() + newOffset++, tempString);
 	input.insert(input.begin() + newOffset++, "{");
-	tempString = std::string("pthread_create(&threads[").append(loopVar).append("], NULL, ").append(smallNewFuncName).append(", (void*) &paramStruct);");
+	tempString = std::string("pthread_create(&threads[").append(loopVar).append("], NULL, ").append(smallNewFuncName).append(", NULL);");
 	input.insert(input.begin() + newOffset++, tempString);
 	input.insert(input.begin() + newOffset++, "}");
 
@@ -183,11 +177,7 @@ void parallelHelper(int start, int end)
 
 	//insert the new stuff, in reverse order!!
 	insertAfterIncludes(newFunction); //first, new function
-
-	if (newStruct.size() > 0) //above that, new struct (if necessary)
-	{
-		insertAfterIncludes(newStruct);
-	}
+	insertAfterIncludes(globalvars);
 
 	printVector(input);
 }
@@ -243,31 +233,6 @@ bool processParallelFor()
 //TODO IMPLEMENT PARALLELFORHELPER
 void parallelForHelper(int start, int end)
 {
-
-}
-
-std::vector<std::string> getNewStructPriv(std::vector<std::string>& privVars, std::string& newStructName)
-{
-	std::vector<std::string> newStruct;
-	if (privVars.size() > 0)
-	{
-		//for each privateVar, we need to save it to a struct. first, create the struct
-		std::string structStr = std::string("struct Struct").append(std::to_string(uniqueStructNum++));
-		newStructName = structStr; //preserve the name for use later
-		newStruct.push_back(structStr);
-		newStruct.push_back("{");
-		//now for each private variable, create an attribute in the struct
-		for (int i = 0; i < privVars.size(); i++)
-		{
-			//first, determine the type of the variable using our varmap
-			std::string varType = varsAndTypes[privVars.at(i)];
-			//now, add it to the newStruct
-			structStr = varType.append(" ").append(privVars.at(i)).append(";");
-			newStruct.push_back(structStr);
-		}
-		newStruct.push_back("};");
-	}
-	return newStruct;
 
 }
 

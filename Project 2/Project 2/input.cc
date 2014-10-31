@@ -5,8 +5,9 @@
 int main()
 {
 	int id;
+	int sharedTest;
 
-	#pragma omp parallel private(id) num_threads(16)
+	#pragma omp parallel private(id) shared(sharedTest) num_threads(16)
 	{
 		id = omp_get_thread_num();
 
