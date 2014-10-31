@@ -166,6 +166,7 @@ void parallelHelper(int start, int end)
 	//first we need an array of pthread_t threadids with size = numthreads
 	std::string tempString = std::string("pthread_t threads[").append(std::to_string(numThreads)).append("];"); //TODO do we need to populate this?
 	input.insert(input.begin() + newOffset++, tempString);
+
 	//populate the threads[] array
 	std::string loopVar = std::string("uniqueVar").append(std::to_string(uniqueVarNum));
 	uniqueVarNum++;
@@ -325,6 +326,7 @@ void parallelForHelper(int start, int end)
 		newFunction.push_back(input.at(i));
 	}
 	newFunction.push_back("}");
+	newFunction.push_back("}");
 
 	//delete the #pragma section
 	input.erase(input.begin() + start, input.begin() + end + 1);
@@ -334,8 +336,18 @@ void parallelForHelper(int start, int end)
 
 	//set up the pthreads code
 	//first we need an array of pthread_t threadids with size = numthreads
-	std::string tempString = std::string("pthread_t threads[").append(std::to_string(numThreads)).append("];"); //TODO do we need to populate this? populated above, did not seem to work
+	std::string tempString = std::string("pthread_t threads[").append(std::to_string(numThreads)).append("];");
 	input.insert(input.begin() + newOffset++, tempString);
+
+	//populate the threads[] array
+	std::string loopVar = std::string("uniqueVar").append(std::to_string(uniqueVarNum));
+	uniqueVarNum++;
+	tempString = std::string("for (int ").append(loopVar).append(" = 0; ").append(loopVar).append(" < ").append(std::to_string(numThreads)).append("; ").append(loopVar).append("++)");
+	input.insert(input.begin() + newOffset++, tempString);
+	input.insert(input.begin() + newOffset++, "{");
+	tempString = std::string("threads[").append(loopVar).append("] = ").append(loopVar).append(";");
+	input.insert(input.begin() + newOffset++, tempString);
+	input.insert(input.begin() + newOffset++, "}");
 
 	//create the pthreads code
 	int uneven = numIterations - ((numIterations / numThreads) * numThreads); //figure out how many don't go in evenly
@@ -356,7 +368,7 @@ void parallelForHelper(int start, int end)
 		tempString = std::string("StartEnd paramStruct").append(std::to_string(i)).append(";");
 		input.insert(input.begin() + newOffset++, tempString);
 
-		tempString = std::string("paramStruct").append(std::to_string(i)).append("->start = ").append(std::to_string(startIteration));
+		tempString = std::string("paramStruct").append(std::to_string(i)).append(".start = ").append(std::to_string(startIteration)).append(";");
 		input.insert(input.begin() + newOffset++, tempString);
 		startIteration += basicNum;
 
@@ -364,15 +376,22 @@ void parallelForHelper(int start, int end)
 		{
 			endIteration = numIterations;
 		}
-		tempString = std::string("paramStruct").append(std::to_string(i)).append("->end = ").append(std::to_string(endIteration));
+		tempString = std::string("paramStruct").append(std::to_string(i)).append(".end = ").append(std::to_string(endIteration)).append(";");
 		input.insert(input.begin() + newOffset++, tempString);
 		endIteration += basicNum;
 
-		tempString = std::string("pthread_create(threads[").append(std::to_string(i)).append("], NULL, ").append(smallNewFuncName).append(", (void*) paramStruct").append(std::to_string(i)).append(");");
+		tempString = std::string("paramStruct").append(std::to_string(i)).append(".threadNum = ").append(std::to_string(i)).append(";");
+		input.insert(input.begin() + newOffset++, tempString);
+
+		tempString = std::string("pthread_create(&threads[").append(std::to_string(i)).append("], NULL, ").append(smallNewFuncName).append(", (void*) &paramStruct").append(std::to_string(i)).append(");");
 		input.insert(input.begin() + newOffset++, tempString);
 	}
 
-	//TODO left off here, come back and implement threadnum like in par
+	for (int i = 0; i < numThreads; i++)
+	{
+		tempString = std::string("pthread_join(threads[").append(std::to_string(i)).append("], NULL);");
+		input.insert(input.begin() + newOffset++, tempString);
+	}
 
 	//insert the new stuff, in reverse order!!
 	insertAfterIncludes(newFunction); //first, new function
@@ -650,7 +669,7 @@ std::string fixForLine(std::string forline)
 			//now we can obtain the name of the loop var
 			std::string loopVar = forline.substr(i + 1, (j - i));
 
-			std::string newstr = std::string("for ( ").append(loopVar).append(" = ((StartEnd*)param)->start; ").append(loopVar).append(" < ((StartEnd*)param)->end; ").append(loopVar).append("++)");
+			std::string newstr = std::string("for ( ").append(loopVar).append(" = ((StartEnd*)paramStruct)->start; ").append(loopVar).append(" < ((StartEnd*)paramStruct)->end; ").append(loopVar).append("++)");
 			return newstr;
 		}
 	}
