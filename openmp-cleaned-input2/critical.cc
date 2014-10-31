@@ -17,10 +17,8 @@ int main()
 		local_sum = 0;
 	
 		#pragma omp for 
-		{
 			for( i = 0; i < 5; i++ )
 				local_sum += a[i];
-		}
 
 		#pragma omp critical
 		{

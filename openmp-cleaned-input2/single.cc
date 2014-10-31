@@ -12,7 +12,8 @@ int main()
 		#pragma omp single
 		{
 			a = 10;
-			printf( "Single construct executed by thread %d\n", omp_get_thread_num() );
+			id = omp_get_thread_num();
+			printf( "Single construct executed by thread %d\n", id );
 		}
 
 		#pragma omp for

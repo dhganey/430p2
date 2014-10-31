@@ -350,22 +350,47 @@ void processVariables()
 	for (int i = 0; i < input.size(); i++)
 	{
 		std::string curStr = input.at(i);
+		std::string typeStr;
+		int offset;
+
+		//determine what is being declared
 		if (curStr.substr(0, 3).compare("int") == 0) //integer declaration
 		{
-			if (curStr.substr(0, curStr.length()).compare("int main()") == 0)
+			if (curStr.substr(0, 8).compare("int main") == 0) //special case for this int!
 			{
-				//do nothing for main
+				continue;
 			}
-			else
-			{
-				std::string varName = curStr.substr(4, (curStr.length() - 5)); //5 to account for "int " plus the semicolon
-				varsAndTypes[varName] = intStr;
-			}
+			typeStr = intStr;
+			offset = 4;
 		}
 		else if (curStr.substr(0, 6).compare("double") == 0) //double declaration
 		{
+			typeStr = doubleStr;
+			offset = 7;
+		}
+		else
+		{
+			continue; //not a var declaration
+		}
+
+
+		if (curStr.find(",") == std::string::npos) //if no commas
+		{
 			std::string varName = curStr.substr(7, (curStr.length() - 8));
-			varsAndTypes[varName] = doubleStr;
+			varsAndTypes[varName] = typeStr;
+		}
+		else //multiple vars/line
+		{
+			std::istringstream buf(curStr);
+			std::istream_iterator<std::string> beg(buf), end;
+			std::vector<std::string> tokens(beg, end);
+
+			for (int i = 1; i < tokens.size(); i++)
+			{
+				std::string varName = tokens.at(i).substr(0, tokens.at(i).length() - 1); //leave off the comma or semicolon
+				varsAndTypes[varName] = typeStr;
+			}
+
 		}
 	}
 }
