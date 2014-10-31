@@ -11,7 +11,7 @@ const std::string whitespace = " \t\f\v\n\r";
 int currentFunction; //number used to differentiate newly created functions
 int uniqueVarNum; //number used to ensure created loop vars don't contradict
 int uniqueStructNum; //number used to ensure created structs don't contradict
-std::vector<std::string> input;
+strvec input;
 std::map < std::string, std::string> varsAndTypes;
 std::map<std::string, int> varsAndLines;
 
@@ -43,7 +43,7 @@ int main()
 	//last, change all omp_get_thread_num calls to pthread_self()
 	processGetThreadNum();
 
-	std::vector<std::string> includes;
+	strvec includes;
 	includes.push_back("#include <pthread.h>");
 	includes.push_back("#include <algorithm>");
 	includes.push_back("#include <cstring>");
@@ -104,8 +104,8 @@ void parallelHelper(int start, int end)
 {
 	//grab the necessary values from the #pragma line
 	std::string pragmaString = input.at(start);
-	std::vector<std::string> privVars = getConstructVars(pragmaString, "private");
-	std::vector<std::string> sharedVars = getConstructVars(pragmaString, "shared");
+	strvec privVars = getConstructVars(pragmaString, "private");
+	strvec sharedVars = getConstructVars(pragmaString, "shared");
 	int numThreads = getNumThreads(pragmaString);
 
 	//create a vector for the new pthreads void* function
@@ -127,7 +127,7 @@ void parallelHelper(int start, int end)
 	}
 
 	//redeclare all global vars at the top
-	std::vector<std::string> globalVars;
+	strvec globalVars;
 	for (int i = 0; i < sharedVars.size(); i++)
 	{
 		std::string typeStr = varsAndTypes[sharedVars.at(i)];
@@ -243,10 +243,98 @@ bool processParallelFor()
 //TODO IMPLEMENT PARALLELFORHELPER
 void parallelForHelper(int start, int end)
 {
+	//grab the necessary values from the #pragma line
+	std::string pragmaString = input.at(start);
+	strvec privVars = getConstructVars(pragmaString, "private");
+	strvec sharedVars = getConstructVars(pragmaString, "shared");
+	int numThreads = getNumThreads(pragmaString);
+
+	//create a vector for the new pthreads void* function
+	std::vector<std::string> newFunction;
+
+	std::string newFuncName;
+	std::string smallNewFuncName = std::string("func").append(std::to_string(currentFunction));
+	newFuncName.append("void* func").append(std::to_string(currentFunction)).append("(void* param)");
+	newFunction.push_back(newFuncName);
+	currentFunction++;
+	newFunction.push_back("{");
+
+	//redeclare all private vars in the new function
+	for (int i = 0; i < privVars.size(); i++)
+	{
+		std::string typeStr = varsAndTypes[privVars.at(i)];
+		std::string newLine = typeStr.append(" ").append(privVars.at(i)).append(";");
+		newFunction.push_back(newLine);
+	}
+
+	//redeclare all global vars at the top
+	strvec globalVars;
+	for (int i = 0; i < sharedVars.size(); i++)
+	{
+		std::string typeStr = varsAndTypes[sharedVars.at(i)];
+		globalVars.push_back(typeStr.append(" ").append(sharedVars.at(i)).append(";"));
+	}
+
+	//remove global var declarations from main
+	for (int i = 0; i < sharedVars.size(); i++)
+	{
+		int declLine = varsAndLines[sharedVars.at(i)];
+		std::string curStr = input.at(declLine);
+		std::string fullLine = varsAndTypes[sharedVars.at(i)];
+		fullLine = fullLine.append(" ").append(sharedVars.at(i)).append(";");
+
+		if (curStr.compare(fullLine) == 0) //easy case: one declaration per line
+		{
+			input.at(declLine) = ""; //remove the declaration. could also comment it
+		}
+		else
+		{
+			//TODO: must be multiple vars declared here
+		}
+	}
+
+	for (int i = start + 2; i < end; i++) //move start up to pass first bracket, < end to not include last bracket.
+	{
+		newFunction.push_back(input.at(i));
+	}
+	newFunction.push_back("}");
+
+	//delete the #pragma section
+	input.erase(input.begin() + start, input.begin() + end + 1);
+
+	//record the offset as start since we're going to be changing the size of the vector
+	int newOffset = start;
+
+	//set up the pthreads code
+	//first we need an array of pthread_t threadids with size = numthreads
+	std::string tempString = std::string("pthread_t threads[").append(std::to_string(numThreads)).append("];"); //TODO do we need to populate this?
+	input.insert(input.begin() + newOffset++, tempString);
+
+	//now set up a for loop to dispatch a pthread for each thread
+	std::string loopVar = std::string("uniqueVar").append(std::to_string(uniqueVarNum));
+	uniqueVarNum++;
+	tempString = std::string("for (int ").append(loopVar).append(" = 0; ").append(loopVar).append(" < ").append(std::to_string(numThreads)).append("; ").append(loopVar).append("++)");
+	input.insert(input.begin() + newOffset++, tempString);
+	input.insert(input.begin() + newOffset++, "{");
+	tempString = std::string("pthread_create(&threads[").append(loopVar).append("], NULL, ").append(smallNewFuncName).append(", NULL);");
+	input.insert(input.begin() + newOffset++, tempString);
+	input.insert(input.begin() + newOffset++, "}");
+
+	//now set up a for loop to join the pthreads
+	tempString = std::string("for (int ").append(loopVar).append(" = 0; ").append(loopVar).append(" < ").append(std::to_string(numThreads)).append("; ").append(loopVar).append("++)");
+	input.insert(input.begin() + newOffset++, tempString);
+	input.insert(input.begin() + newOffset++, "{");
+	tempString = std::string("pthread_join(threads[").append(loopVar).append("], NULL);");
+	input.insert(input.begin() + newOffset++, tempString);
+	input.insert(input.begin() + newOffset++, "}");
+
+	//insert the new stuff, in reverse order!!
+	insertAfterIncludes(newFunction); //first, new function
+	insertAfterIncludes(globalVars);
 
 }
 
-void insertAfterIncludes(std::vector<std::string>& vecRef)
+void insertAfterIncludes(strvec& vecRef)
 {
 	//move past any includes
 	int i;
@@ -294,7 +382,7 @@ void trimRight(std::string& str)
 	str.erase(str.begin() + end, str.end()-1);
 }
 
-void printVector(std::vector<std::string>& vecRef)
+void printVector(strvec& vecRef)
 {
 	for (int i = 0; i < vecRef.size(); i++)
 	{
@@ -360,7 +448,7 @@ int getNumIterations(std::string str)
 	return -1; //caller should check for this error case
 }
 
-std::vector<std::string> getConstructVars(std::string str, std::string criteria)
+strvec getConstructVars(std::string str, std::string criteria)
 {
 	const int OFFSET = criteria.length();
 	std::vector<std::string> privVars;
