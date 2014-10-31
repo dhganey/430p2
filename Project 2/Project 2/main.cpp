@@ -11,7 +11,7 @@ const std::string whitespace = " \t\f\v\n\r";
 int currentFunction; //number used to differentiate newly created functions
 int uniqueVarNum; //number used to ensure created loop vars don't contradict
 int uniqueStructNum; //number used to ensure created structs don't contradict
-std::vector<std::string> input;
+strvec input;
 std::map < std::string, std::string> varsAndTypes;
 std::map<std::string, int> varsAndLines;
 
@@ -43,7 +43,7 @@ int main()
 	//last, change all omp_get_thread_num calls to pthread_self()
 	processGetThreadNum();
 
-	std::vector<std::string> includes;
+	strvec includes;
 	includes.push_back("#include <pthread.h>");
 	includes.push_back("#include <algorithm>");
 	includes.push_back("#include <cstring>");
@@ -100,63 +100,21 @@ bool processParallel()
 	return foundPragma;
 }
 
+//Drives the processing of a specific #pragma omp parallel region
 void parallelHelper(int start, int end)
 {
 	//grab the necessary values from the #pragma line
 	std::string pragmaString = input.at(start);
-	std::vector<std::string> privVars = getConstructVars(pragmaString, "private");
-	std::vector<std::string> sharedVars = getConstructVars(pragmaString, "shared");
+	strvec privVars = getConstructVars(pragmaString, "private");
+	strvec sharedVars = getConstructVars(pragmaString, "shared");
 	int numThreads = getNumThreads(pragmaString);
 
 	//create a vector for the new pthreads void* function
-	std::vector<std::string> newFunction;
-
-	std::string newFuncName;
-	std::string smallNewFuncName = std::string("func").append(std::to_string(currentFunction));
-	newFuncName.append("void* func").append(std::to_string(currentFunction)).append("(void* param)");
-	newFunction.push_back(newFuncName);
-	currentFunction++;
-	newFunction.push_back("{");
-
-	//redeclare all private vars in the new function
-	for (int i = 0; i < privVars.size(); i++)
-	{
-		std::string typeStr = varsAndTypes[privVars.at(i)];
-		std::string newLine = typeStr.append(" ").append(privVars.at(i)).append(";");
-		newFunction.push_back(newLine);
-	}
-
-	//redeclare all global vars at the top
-	std::vector<std::string> globalVars;
-	for (int i = 0; i < sharedVars.size(); i++)
-	{
-		std::string typeStr = varsAndTypes[sharedVars.at(i)];
-		globalVars.push_back(typeStr.append(" ").append(sharedVars.at(i)).append(";"));
-	}
-
-	//remove global var declarations from main
-	for (int i = 0; i < sharedVars.size(); i++)
-	{
-		int declLine = varsAndLines[sharedVars.at(i)];
-		std::string curStr = input.at(declLine);
-		std::string fullLine = varsAndTypes[sharedVars.at(i)];
-		fullLine = fullLine.append(" ").append(sharedVars.at(i)).append(";");
-
-		if (curStr.compare(fullLine) == 0) //easy case: one declaration per line
-		{
-			input.at(declLine) = ""; //remove the declaration. could also comment it
-		}
-		else
-		{
-			//TODO: must be multiple vars declared here
-		}
-	}
-
-	for (int i = start + 2; i < end; i++) //move start up to pass first bracket, < end to not include last bracket.
-	{
-		newFunction.push_back(input.at(i));
-	}
-	newFunction.push_back("}");
+	strvec newFunction;
+	strvec globalVars;
+	std::string smallNewFuncName = std::string("func").append(std::to_string(currentFunction)); //NOTE: this is acceptable as long as its immediately followed by createNewFunction
+																								//if it's not, currentFunction won't be incremented
+	createNewFunction(newFunction, globalVars, start, end, privVars, sharedVars);
 
 	//delete the #pragma section
 	input.erase(input.begin() + start, input.begin() + end + 1);
@@ -240,7 +198,7 @@ bool processParallelFor()
 
 }
 
-//TODO IMPLEMENT PARALLELFORHELPER
+//Drives the processing of a specific #pragma omp parallel for region
 void parallelForHelper(int start, int end)
 {
 
@@ -473,4 +431,62 @@ void processGetThreadNum()
 	}
 
 	insertAfterIncludes(newThreadIdFunc);
+}
+
+//Handles the redeclaration of private and shared vars
+//Returns the new global vars to be added below includes later
+std::vector<std::string> handlePrivateAndShared(std::vector<std::string>& privVars, std::vector<std::string>& sharedVars, std::vector<std::string>& newFunction)
+{
+	//redeclare all private vars in the new function
+	for (int i = 0; i < privVars.size(); i++)
+	{
+		std::string typeStr = varsAndTypes[privVars.at(i)];
+		std::string newLine = typeStr.append(" ").append(privVars.at(i)).append(";");
+		newFunction.push_back(newLine);
+	}
+
+	//redeclare all global vars at the top
+	std::vector<std::string> globalVars;
+	for (int i = 0; i < sharedVars.size(); i++)
+	{
+		std::string typeStr = varsAndTypes[sharedVars.at(i)];
+		globalVars.push_back(typeStr.append(" ").append(sharedVars.at(i)).append(";"));
+	}
+
+	//remove global var declarations from main
+	for (int i = 0; i < sharedVars.size(); i++)
+	{
+		int declLine = varsAndLines[sharedVars.at(i)];
+		std::string curStr = input.at(declLine);
+		std::string fullLine = varsAndTypes[sharedVars.at(i)];
+		fullLine = fullLine.append(" ").append(sharedVars.at(i)).append(";");
+
+		if (curStr.compare(fullLine) == 0) //easy case: one declaration per line
+		{
+			input.at(declLine) = ""; //remove the declaration. could also comment it
+		}
+		else
+		{
+			//TODO: must be multiple vars declared here
+		}
+	}
+
+	return globalVars;
+}
+
+void createNewFunction(strvec& newFunction, strvec& globalVars, int start, int end, strvec& privVars, strvec& sharedVars)
+{
+	std::string newFuncName;
+	newFuncName.append("void* func").append(std::to_string(currentFunction)).append("(void* param)");
+	newFunction.push_back(newFuncName);
+	currentFunction++;
+	newFunction.push_back("{");
+
+	globalVars = handlePrivateAndShared(privVars, sharedVars, newFunction);
+
+	for (int i = start + 2; i < end; i++) //move start up to pass first bracket, < end to not include last bracket.
+	{
+		newFunction.push_back(input.at(i));
+	}
+	newFunction.push_back("}");
 }
