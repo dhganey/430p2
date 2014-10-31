@@ -40,10 +40,11 @@ int main()
 		foundConstruct = processParallelFor();
 	}
 
-	//last, change all omp_get_thread_num calls to pthread_self()
+	//last, change all omp_get_thread_num calls to use the paramstruct
 	processGetThreadNum();
 
-	insertAfterIncludes(createStartEndStruct());
+	strvec newStruct = createStartEndStruct();
+	insertAfterIncludes(newStruct);
 
 	strvec includes;
 	includes.push_back("#include <pthread.h>");
@@ -115,7 +116,7 @@ void parallelHelper(int start, int end)
 
 	std::string newFuncName;
 	std::string smallNewFuncName = std::string("func").append(std::to_string(currentFunction));
-	newFuncName.append("void* func").append(std::to_string(currentFunction)).append("(void* param)");
+	newFuncName.append("void* func").append(std::to_string(currentFunction)).append("(void* paramStruct)");
 	newFunction.push_back(newFuncName);
 	currentFunction++;
 	newFunction.push_back("{");
@@ -136,22 +137,16 @@ void parallelHelper(int start, int end)
 		globalVars.push_back(typeStr.append(" ").append(sharedVars.at(i)).append(";"));
 	}
 
-	//remove global var declarations from main
-	for (int i = 0; i < sharedVars.size(); i++)
+	//remove all variable declarations from main
+	for (int i = 0; i < sharedVars.size(); i++) //for shared and private below
 	{
 		int declLine = varsAndLines[sharedVars.at(i)];
-		std::string curStr = input.at(declLine);
-		std::string fullLine = varsAndTypes[sharedVars.at(i)];
-		fullLine = fullLine.append(" ").append(sharedVars.at(i)).append(";");
-
-		if (curStr.compare(fullLine) == 0) //easy case: one declaration per line
-		{
-			input.at(declLine) = ""; //remove the declaration. could also comment it
-		}
-		else
-		{
-			//TODO: must be multiple vars declared here
-		}
+		input.at(declLine) = "";
+	}
+	for (int i = 0; i < privVars.size(); i++)
+	{
+		int declLine = varsAndLines[privVars.at(i)];
+		input.at(declLine) = "";
 	}
 
 	//copy the function code as-is
@@ -184,10 +179,29 @@ void parallelHelper(int start, int end)
 	//now set up a for loop to dispatch a pthread for each thread
 	loopVar = std::string("uniqueVar").append(std::to_string(uniqueVarNum));
 	uniqueVarNum++;
+
+	//prep the actual creation for loop
 	tempString = std::string("for (int ").append(loopVar).append(" = 0; ").append(loopVar).append(" < ").append(std::to_string(numThreads)).append("; ").append(loopVar).append("++)");
 	input.insert(input.begin() + newOffset++, tempString);
 	input.insert(input.begin() + newOffset++, "{");
-	tempString = std::string("pthread_create(&threads[").append(loopVar).append("], NULL, ").append(smallNewFuncName).append(", NULL);");
+
+	//create the struct to hold the threadnum
+	std::string paramStructString = std::string("paramStruct").append(std::to_string(uniqueStructNum));
+	std::string saveParamStructString = paramStructString;
+	uniqueStructNum++;
+
+	tempString = std::string("StartEnd ").append(paramStructString).append(";");
+	paramStructString = saveParamStructString;
+	input.insert(input.begin() + newOffset++, tempString);
+
+	//in the for loop, assign the thread num to the struct
+	tempString = paramStructString.append(".threadNum = ").append(loopVar).append(";");
+	paramStructString = saveParamStructString;
+	input.insert(input.begin() + newOffset++, tempString);
+
+	//create the pthread, passing that struct
+	tempString = std::string("pthread_create(&threads[").append(loopVar).append("], NULL, ").append(smallNewFuncName).append(", (void*) &").append(paramStructString).append(");");
+	paramStructString = saveParamStructString;
 	input.insert(input.begin() + newOffset++, tempString);
 	input.insert(input.begin() + newOffset++, "}");
 
@@ -267,7 +281,7 @@ void parallelForHelper(int start, int end)
 
 	std::string newFuncName;
 	std::string smallNewFuncName = std::string("func").append(std::to_string(currentFunction));
-	newFuncName.append("void* func").append(std::to_string(currentFunction)).append("(void* param)");
+	newFuncName.append("void* func").append(std::to_string(currentFunction)).append("(void* paramStruct)");
 	newFunction.push_back(newFuncName);
 	currentFunction++;
 	newFunction.push_back("{");
@@ -288,22 +302,16 @@ void parallelForHelper(int start, int end)
 		globalVars.push_back(typeStr.append(" ").append(sharedVars.at(i)).append(";"));
 	}
 
-	//remove global var declarations from main
-	for (int i = 0; i < sharedVars.size(); i++)
+	//remove all variable declarations from main
+	for (int i = 0; i < sharedVars.size(); i++) //for shared and private below
 	{
 		int declLine = varsAndLines[sharedVars.at(i)];
-		std::string curStr = input.at(declLine);
-		std::string fullLine = varsAndTypes[sharedVars.at(i)];
-		fullLine = fullLine.append(" ").append(sharedVars.at(i)).append(";");
-
-		if (curStr.compare(fullLine) == 0) //easy case: one declaration per line
-		{
-			input.at(declLine) = ""; //remove the declaration. could also comment it
-		}
-		else
-		{
-			//TODO: must be multiple vars declared here
-		}
+		input.at(declLine) = "";
+	}
+	for (int i = 0; i < privVars.size(); i++)
+	{
+		int declLine = varsAndLines[privVars.at(i)];
+		input.at(declLine) = "";
 	}
 
 	//move the code to the new function
@@ -363,6 +371,8 @@ void parallelForHelper(int start, int end)
 		tempString = std::string("pthread_create(threads[").append(std::to_string(i)).append("], NULL, ").append(smallNewFuncName).append(", (void*) paramStruct").append(std::to_string(i)).append(");");
 		input.insert(input.begin() + newOffset++, tempString);
 	}
+
+	//TODO left off here, come back and implement threadnum like in par
 
 	//insert the new stuff, in reverse order!!
 	insertAfterIncludes(newFunction); //first, new function
@@ -590,17 +600,7 @@ void processVariables()
 
 void processGetThreadNum()
 {
-	std::vector<std::string> newThreadIdFunc;
-	newThreadIdFunc.push_back("int gettid()");
-	newThreadIdFunc.push_back("{");
-	newThreadIdFunc.push_back("pthread_t ptid = pthread_self();");
-	newThreadIdFunc.push_back("int threadId = 0;");
-	newThreadIdFunc.push_back("std::memcpy(&threadId, &ptid, std::min(sizeof(threadId), sizeof(ptid)));");
-	newThreadIdFunc.push_back("return threadId;");
-	newThreadIdFunc.push_back("}");
-
-
-	std::string replacement = "id = gettid();";
+	std::string replacement = "id = ((StartEnd*) paramStruct)->threadNum;";
 
 	for (int i = 0; i < input.size(); i++)
 	{
@@ -612,8 +612,6 @@ void processGetThreadNum()
 			input.at(i) = replacement;
 		}
 	}
-
-	insertAfterIncludes(newThreadIdFunc);
 }
 
 strvec createStartEndStruct()
@@ -623,6 +621,7 @@ strvec createStartEndStruct()
 	newStruct.push_back("{");
 	newStruct.push_back("int start;");
 	newStruct.push_back("int end;");
+	newStruct.push_back("int threadNum;");
 	newStruct.push_back("};");
 
 	return newStruct;
