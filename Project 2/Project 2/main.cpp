@@ -168,9 +168,18 @@ void parallelHelper(int start, int end)
 	//first we need an array of pthread_t threadids with size = numthreads
 	std::string tempString = std::string("pthread_t threads[").append(std::to_string(numThreads)).append("];"); //TODO do we need to populate this?
 	input.insert(input.begin() + newOffset++, tempString);
+	//populate the threads[] array
+	std::string loopVar = std::string("uniqueVar").append(std::to_string(uniqueVarNum));
+	uniqueVarNum++;
+	tempString = std::string("for (int ").append(loopVar).append(" = 0; ").append(loopVar).append(" < ").append(std::to_string(numThreads)).append("; ").append(loopVar).append("++)");
+	input.insert(input.begin() + newOffset++, tempString);
+	input.insert(input.begin() + newOffset++, "{");
+	tempString = std::string("threads[").append(loopVar).append("] = ").append(loopVar).append(";");
+	input.insert(input.begin() + newOffset++, tempString);
+	input.insert(input.begin() + newOffset++, "}");
 
 	//now set up a for loop to dispatch a pthread for each thread
-	std::string loopVar = std::string("uniqueVar").append(std::to_string(uniqueVarNum));
+	loopVar = std::string("uniqueVar").append(std::to_string(uniqueVarNum));
 	uniqueVarNum++;
 	tempString = std::string("for (int ").append(loopVar).append(" = 0; ").append(loopVar).append(" < ").append(std::to_string(numThreads)).append("; ").append(loopVar).append("++)");
 	input.insert(input.begin() + newOffset++, tempString);
@@ -180,6 +189,8 @@ void parallelHelper(int start, int end)
 	input.insert(input.begin() + newOffset++, "}");
 
 	//now set up a for loop to join the pthreads
+	loopVar = std::string("uniqueVar").append(std::to_string(uniqueVarNum));
+	uniqueVarNum++;
 	tempString = std::string("for (int ").append(loopVar).append(" = 0; ").append(loopVar).append(" < ").append(std::to_string(numThreads)).append("; ").append(loopVar).append("++)");
 	input.insert(input.begin() + newOffset++, tempString);
 	input.insert(input.begin() + newOffset++, "{");
