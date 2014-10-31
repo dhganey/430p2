@@ -16,10 +16,14 @@ strvec getConstructVars(std::string str, std::string criteria);
 
 void processVariables();
 void processGetThreadNum();
+
 bool processParallel();
 bool processParallelFor();
+bool processCritical();
+
 void parallelHelper(int start, int end);
 void parallelForHelper(int start, int end);
+void criticalHelper(int start, int end);
 
 void insertAfterIncludes(strvec& vecRef);
 
