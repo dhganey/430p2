@@ -22,9 +22,6 @@ int main()
 	uniqueStructNum = 1;
 
 	readInput();
-	//printVector(input);
-
-	input.insert(input.begin(), "#include <pthread.h>");
 
 	//find variable declarations
 	processVariables();
@@ -45,6 +42,14 @@ int main()
 
 	//last, change all omp_get_thread_num calls to pthread_self()
 	processGetThreadNum();
+
+	std::vector<std::string> includes;
+	includes.push_back("#include <pthread.h>");
+	includes.push_back("#include <algorithm>");
+	includes.push_back("#include <cstring>");
+	insertAfterIncludes(includes);
+
+	printVector(input);
 }
 
 //Returns true if it processes something
@@ -108,7 +113,7 @@ void parallelHelper(int start, int end)
 
 	std::string newFuncName;
 	std::string smallNewFuncName = std::string("func").append(std::to_string(currentFunction));
-	newFuncName.append("void* func").append(std::to_string(currentFunction)).append("()"); //no parameter
+	newFuncName.append("void* func").append(std::to_string(currentFunction)).append("(void* param)");
 	newFunction.push_back(newFuncName);
 	currentFunction++;
 	newFunction.push_back("{");
@@ -178,15 +183,13 @@ void parallelHelper(int start, int end)
 	tempString = std::string("for (int ").append(loopVar).append(" = 0; ").append(loopVar).append(" < ").append(std::to_string(numThreads)).append("; ").append(loopVar).append("++)");
 	input.insert(input.begin() + newOffset++, tempString);
 	input.insert(input.begin() + newOffset++, "{");
-	tempString = std::string("pthread_join(&threads[").append(loopVar).append("], NULL);");
+	tempString = std::string("pthread_join(threads[").append(loopVar).append("], NULL);");
 	input.insert(input.begin() + newOffset++, tempString);
 	input.insert(input.begin() + newOffset++, "}");
 
 	//insert the new stuff, in reverse order!!
 	insertAfterIncludes(newFunction); //first, new function
 	insertAfterIncludes(globalVars);
-
-	printVector(input);
 }
 
 //Returns true if it processes something
@@ -451,7 +454,7 @@ void processGetThreadNum()
 	newThreadIdFunc.push_back("{");
 	newThreadIdFunc.push_back("pthread_t ptid = pthread_self();");
 	newThreadIdFunc.push_back("int threadId = 0;");
-	newThreadIdFunc.push_back("memcpy(&threadId, &ptid, std::min(sizeof(threadId), sizeof(ptid)));");
+	newThreadIdFunc.push_back("std::memcpy(&threadId, &ptid, std::min(sizeof(threadId), sizeof(ptid)));");
 	newThreadIdFunc.push_back("return threadId;");
 	newThreadIdFunc.push_back("}");
 
@@ -465,11 +468,9 @@ void processGetThreadNum()
 		if (pos != std::string::npos) //if we find one
 		{
 			//replace with a call to gettid()
-			input.erase(input.begin() + i, input.begin() + i + 1);
-			input.insert(input.begin() + i, replacement);
+			input.at(i) = replacement;
 		}
 	}
 
 	insertAfterIncludes(newThreadIdFunc);
-
 }
