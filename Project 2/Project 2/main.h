@@ -22,3 +22,7 @@ void parallelHelper(int start, int end);
 void parallelForHelper(int start, int end);
 
 void insertAfterIncludes(strvec& vecRef);
+
+strvec createStartEndStruct();
+
+std::string fixForLine(std::string forline);

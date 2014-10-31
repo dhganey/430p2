@@ -79,7 +79,6 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp" />
-    <ClCompile Include="output.cc" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="main.h" />

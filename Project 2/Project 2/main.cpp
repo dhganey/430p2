@@ -43,6 +43,8 @@ int main()
 	//last, change all omp_get_thread_num calls to pthread_self()
 	processGetThreadNum();
 
+	insertAfterIncludes(createStartEndStruct());
+
 	strvec includes;
 	includes.push_back("#include <pthread.h>");
 	includes.push_back("#include <algorithm>");
@@ -62,7 +64,7 @@ bool processParallel()
 	{
 		std::string curStr = input.at(i);
 		if ((curStr.substr(0, 20).compare("#pragma omp parallel") == 0) &&
-			 curStr.substr(0, 28).compare("#pragma omp parallel for") != 0)
+			 curStr.substr(0, 24).compare("#pragma omp parallel for") != 0)
 		{
 			foundPragma = true;
 			int j = i + 2; //move past the opening bracket
@@ -152,6 +154,7 @@ void parallelHelper(int start, int end)
 		}
 	}
 
+	//copy the function code as-is
 	for (int i = start + 2; i < end; i++) //move start up to pass first bracket, < end to not include last bracket.
 	{
 		newFunction.push_back(input.at(i));
@@ -251,7 +254,6 @@ bool processParallelFor()
 
 }
 
-//TODO IMPLEMENT PARALLELFORHELPER
 void parallelForHelper(int start, int end)
 {
 	//grab the necessary values from the #pragma line
@@ -304,7 +306,13 @@ void parallelForHelper(int start, int end)
 		}
 	}
 
-	for (int i = start + 2; i < end; i++) //move start up to pass first bracket, < end to not include last bracket.
+	//move the code to the new function
+	//first modify the for loop to use the start and end from the new struct
+	int numIterations = getNumIterations(input.at(start + 1));
+	input.at(start + 1) = fixForLine(input.at(start + 1));
+
+	//then copy the rest of the stuff
+	for (int i = start + 1; i < end; i++)
 	{
 		newFunction.push_back(input.at(i));
 	}
@@ -318,26 +326,38 @@ void parallelForHelper(int start, int end)
 
 	//set up the pthreads code
 	//first we need an array of pthread_t threadids with size = numthreads
-	std::string tempString = std::string("pthread_t threads[").append(std::to_string(numThreads)).append("];"); //TODO do we need to populate this?
+	std::string tempString = std::string("pthread_t threads[").append(std::to_string(numThreads)).append("];"); //TODO do we need to populate this? populated above, did not seem to work
 	input.insert(input.begin() + newOffset++, tempString);
 
-	//now set up a for loop to dispatch a pthread for each thread
-	std::string loopVar = std::string("uniqueVar").append(std::to_string(uniqueVarNum));
-	uniqueVarNum++;
-	tempString = std::string("for (int ").append(loopVar).append(" = 0; ").append(loopVar).append(" < ").append(std::to_string(numThreads)).append("; ").append(loopVar).append("++)");
-	input.insert(input.begin() + newOffset++, tempString);
-	input.insert(input.begin() + newOffset++, "{");
-	tempString = std::string("pthread_create(&threads[").append(loopVar).append("], NULL, ").append(smallNewFuncName).append(", NULL);");
-	input.insert(input.begin() + newOffset++, tempString);
-	input.insert(input.begin() + newOffset++, "}");
+	//create the pthreads code
+	int uneven = numIterations - ((numIterations / numThreads) * numThreads); //figure out how many don't go in evenly
+	int basicNum = numIterations / numThreads;
+	//now distribute the iterations among the pthreads
+	//example: 18 iterations among 4 threads
+	//break it down as follows:
+	//0-3 thread 1
+	//4-7 thread 2
+	//8-11 thread 3
+	//12-17 thread 4
 
-	//now set up a for loop to join the pthreads
-	tempString = std::string("for (int ").append(loopVar).append(" = 0; ").append(loopVar).append(" < ").append(std::to_string(numThreads)).append("; ").append(loopVar).append("++)");
-	input.insert(input.begin() + newOffset++, tempString);
-	input.insert(input.begin() + newOffset++, "{");
-	tempString = std::string("pthread_join(threads[").append(loopVar).append("], NULL);");
-	input.insert(input.begin() + newOffset++, tempString);
-	input.insert(input.begin() + newOffset++, "}");
+	int startIteration = 0;
+	int endIteration = basicNum - 1;
+	for (int i = 0; i < numThreads; i++)
+	{
+		//TODO this is close, but i just cant figure it out right now
+		//need to know when to add basicnum and when to add uneven to enditeration
+		//please also consider the situation of 14 iterations in 4 threads in addition to 18
+		tempString = std::string("StartEnd paramStruct").append(std::to_string(i)).append(";");
+		input.insert(input.begin() + newOffset++, tempString);
+
+		tempString = std::string("paramStruct").append(std::to_string(i)).append("->start = ").append(std::to_string(startIteration));
+		input.insert(input.begin() + newOffset++, tempString);
+		startIteration += basicNum;
+
+		tempString = std::string("paramStruct").append(std::to_string(i)).append("->end = ").append(std::to_string(endIteration));
+		input.insert(input.begin() + newOffset++, tempString);
+		tempString = std::string("pthread_create(threads[").append(std::to_string(i)).append("], NULL, ").append(smallNewFuncName).append(", (void*) paramStruct").append(std::to_string(i).append(";");
+	}
 
 	//insert the new stuff, in reverse order!!
 	insertAfterIncludes(newFunction); //first, new function
@@ -459,6 +479,23 @@ int getNumIterations(std::string str)
 	return -1; //caller should check for this error case
 }
 
+int getStartNum(std::string str)
+{
+	for (int i = 0; i < str.length(); i++)
+	{
+		if (str.at(i) == ';')
+		{
+			for (int j = i; j > 0; j--) //go backwards until we find space or =
+			{
+				if (str.at(j) == ' ' || str.at(j) == '=')
+				{
+					return atoi(str.substr(j + 1, (i - j - 1)).c_str());
+				}
+			}
+		}
+	}
+}
+
 strvec getConstructVars(std::string str, std::string criteria)
 {
 	const int OFFSET = criteria.length();
@@ -572,4 +609,47 @@ void processGetThreadNum()
 	}
 
 	insertAfterIncludes(newThreadIdFunc);
+}
+
+strvec createStartEndStruct()
+{
+	strvec newStruct;
+	newStruct.push_back("struct StartEnd");
+	newStruct.push_back("{");
+	newStruct.push_back("int start;");
+	newStruct.push_back("int end;");
+	newStruct.push_back("};");
+
+	return newStruct;
+}
+
+std::string fixForLine(std::string forline)
+{
+	//determine the loop variable name
+	//by assumptions it should come right after the ( before a space or =
+	for (int i = 0; i < forline.length(); i++)
+	{
+		if (forline.at(i) == '(')
+		{
+			int j = i + 1;
+			//move past any initial spaces
+			while (forline.at(j) == ' ')
+			{
+				j++;
+			}
+
+			//now move through var until we hit a space or =
+			while (forline.at(j) != ' ' && forline.at(j) != '=')
+			{
+				j++;
+			}
+			//now we can obtain the name of the loop var
+			std::string loopVar = forline.substr(i + 1, (j - i));
+
+			std::string newstr = std::string("for ( ").append(loopVar).append(" = ((StartEnd*)param)->start; ").append(loopVar).append(" < ((StartEnd*)param)->end; ").append(loopVar).append("++)");
+			return newstr;
+		}
+	}
+
+	return "";
 }
