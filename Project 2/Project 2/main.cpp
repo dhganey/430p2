@@ -201,51 +201,6 @@ bool processParallelFor()
 //Drives the processing of a specific #pragma omp parallel for region
 void parallelForHelper(int start, int end)
 {
-	//grab the necessary values from the #pragma line
-	std::string pragmaString = input.at(start);
-	strvec privVars = getConstructVars(pragmaString, "private");
-	strvec sharedVars = getConstructVars(pragmaString, "shared");
-	int numThreads = getNumThreads(pragmaString);
-
-	//create a vector for the new pthreads void* function
-	strvec newFunction;
-	strvec globalVars;
-	std::string smallNewFuncName = std::string("func").append(std::to_string(currentFunction)); //NOTE: this is acceptable as long as its immediately followed by createNewFunction
-	//if it's not, currentFunction won't be incremented
-	createNewFunction(newFunction, globalVars, start, end, privVars, sharedVars);
-
-	//delete the #pragma section
-	input.erase(input.begin() + start, input.begin() + end + 1);
-
-	//record the offset as start since we're going to be changing the size of the vector
-	int newOffset = start;
-
-	//set up the pthreads code
-	//first we need an array of pthread_t threadids with size = numthreads
-	std::string tempString = std::string("pthread_t threads[").append(std::to_string(numThreads)).append("];"); //TODO do we need to populate this?
-	input.insert(input.begin() + newOffset++, tempString);
-
-	//now set up a for loop to dispatch a pthread for each thread
-	std::string loopVar = std::string("uniqueVar").append(std::to_string(uniqueVarNum));
-	uniqueVarNum++;
-	tempString = std::string("for (int ").append(loopVar).append(" = 0; ").append(loopVar).append(" < ").append(std::to_string(numThreads)).append("; ").append(loopVar).append("++)");
-	input.insert(input.begin() + newOffset++, tempString);
-	input.insert(input.begin() + newOffset++, "{");
-	tempString = std::string("pthread_create(&threads[").append(loopVar).append("], NULL, ").append(smallNewFuncName).append(", NULL);");
-	input.insert(input.begin() + newOffset++, tempString);
-	input.insert(input.begin() + newOffset++, "}");
-
-	//now set up a for loop to join the pthreads
-	tempString = std::string("for (int ").append(loopVar).append(" = 0; ").append(loopVar).append(" < ").append(std::to_string(numThreads)).append("; ").append(loopVar).append("++)");
-	input.insert(input.begin() + newOffset++, tempString);
-	input.insert(input.begin() + newOffset++, "{");
-	tempString = std::string("pthread_join(threads[").append(loopVar).append("], NULL);");
-	input.insert(input.begin() + newOffset++, tempString);
-	input.insert(input.begin() + newOffset++, "}");
-
-	//insert the new stuff, in reverse order!!
-	insertAfterIncludes(newFunction); //first, new function
-	insertAfterIncludes(globalVars);
 
 }
 
