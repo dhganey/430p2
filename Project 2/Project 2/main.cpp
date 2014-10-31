@@ -13,6 +13,7 @@ int uniqueVarNum; //number used to ensure created loop vars don't contradict
 int uniqueStructNum; //number used to ensure created structs don't contradict
 std::vector<std::string> input;
 std::map < std::string, std::string> varsAndTypes;
+std::map<std::string, int> varsAndLines;
 
 int main()
 {
@@ -112,7 +113,7 @@ void parallelHelper(int start, int end)
 	currentFunction++;
 	newFunction.push_back("{");
 
-	//redeclare all private vars
+	//redeclare all private vars in the new function
 	for (int i = 0; i < privVars.size(); i++)
 	{
 		std::string typeStr = varsAndTypes[privVars.at(i)];
@@ -120,23 +121,29 @@ void parallelHelper(int start, int end)
 		newFunction.push_back(newLine);
 	}
 
-	//move all shared var declarations to the top of the file
-	std::vector<std::string> globalvars;
-	for (int i = 0; i < sharedVars.size(); i++) //for each shared var
+	//redeclare all global vars at the top
+	std::vector<std::string> globalVars;
+	for (int i = 0; i < sharedVars.size(); i++)
 	{
-		for (int j = 0; j < input.size(); j++) //look through the file
+		std::string typeStr = varsAndTypes[sharedVars.at(i)];
+		globalVars.push_back(typeStr.append(" ").append(sharedVars.at(i)).append(";"));
+	}
+
+	//remove global var declarations from main
+	for (int i = 0; i < sharedVars.size(); i++)
+	{
+		int declLine = varsAndLines[sharedVars.at(i)];
+		std::string curStr = input.at(declLine);
+		std::string fullLine = varsAndTypes[sharedVars.at(i)];
+		fullLine = fullLine.append(" ").append(sharedVars.at(i)).append(";");
+
+		if (curStr.compare(fullLine) == 0) //easy case: one declaration per line
 		{
-			std::string typeStr = varsAndTypes[sharedVars.at(i)];
-			std::string declStr = typeStr.append(" ").append(sharedVars.at(i));
-			if (declStr.length() < input.at(j).length()) //if the line could possibly contain the declaration
-			{
-				if (input.at(j).substr(0, declStr.length()).compare(declStr) == 0) //if it contains the declaration
-				{
-					globalvars.push_back(input.at(j));
-					//instead of erasing the declaration, it's easier to just comment it out:
-					input.at(j) = std::string("//").append(input.at(j));
-				}
-			}
+			input.at(declLine) = ""; //remove the declaration. could also comment it
+		}
+		else
+		{
+			//TODO: must be multiple vars declared here
 		}
 	}
 
@@ -177,7 +184,7 @@ void parallelHelper(int start, int end)
 
 	//insert the new stuff, in reverse order!!
 	insertAfterIncludes(newFunction); //first, new function
-	insertAfterIncludes(globalvars);
+	insertAfterIncludes(globalVars);
 
 	printVector(input);
 }
@@ -419,6 +426,7 @@ void processVariables()
 		{
 			std::string varName = curStr.substr(offset, (curStr.length() - offset - 1)); //-1 to leave semicolon off
 			varsAndTypes[varName] = typeStr;
+			varsAndLines[varName] = i;
 		}
 		else //multiple vars/line
 		{
@@ -426,10 +434,11 @@ void processVariables()
 			std::istream_iterator<std::string> beg(buf), end;
 			std::vector<std::string> tokens(beg, end);
 
-			for (int i = 1; i < tokens.size(); i++)
+			for (int j = 1; j < tokens.size(); j++)
 			{
-				std::string varName = tokens.at(i).substr(0, tokens.at(i).length() - 1); //leave off the comma or semicolon
+				std::string varName = tokens.at(j).substr(0, tokens.at(j).length() - 1); //leave off the comma or semicolon
 				varsAndTypes[varName] = typeStr;
+				varsAndLines[varName] = i;
 			}
 		}
 	}
