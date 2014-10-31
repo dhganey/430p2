@@ -13,6 +13,7 @@ int getNumIterations(std::string str);
 std::vector<std::string> getConstructVars(std::string str, std::string criteria);
 
 void processVariables();
+void processGetThreadNum();
 bool processParallel();
 bool processParallelFor();
 void parallelHelper(int start, int end);

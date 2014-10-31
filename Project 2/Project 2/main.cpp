@@ -28,6 +28,9 @@ int main()
 	//find variable declarations
 	processVariables();
 
+	//now, change all omp_get_thread_num calls to pthread_self()
+	processGetThreadNum();
+
 	//First, handle parallels
 	bool foundConstruct = true;
 	while (foundConstruct)
@@ -167,6 +170,14 @@ void parallelHelper(int start, int end)
 	input.insert(input.begin() + newOffset++, tempString);
 	input.insert(input.begin() + newOffset++, "{");
 	tempString = std::string("pthread_create(&threads[").append(loopVar).append("], NULL, ").append(smallNewFuncName).append(", (void*) &paramStruct);");
+	input.insert(input.begin() + newOffset++, tempString);
+	input.insert(input.begin() + newOffset++, "}");
+
+	//now set up a for loop to join the pthreads
+	tempString = std::string("for (int ").append(loopVar).append(" = 0; ").append(loopVar).append(" < ").append(std::to_string(numThreads)).append("; ").append(loopVar).append("++)");
+	input.insert(input.begin() + newOffset++, tempString);
+	input.insert(input.begin() + newOffset++, "{");
+	tempString = std::string("pthread_join(&threads[").append(loopVar).append("], NULL);");
 	input.insert(input.begin() + newOffset++, tempString);
 	input.insert(input.begin() + newOffset++, "}");
 
@@ -457,4 +468,34 @@ void processVariables()
 			}
 		}
 	}
+}
+
+void processGetThreadNum()
+{
+	std::vector<std::string> newThreadIdFunc;
+	newThreadIdFunc.push_back("int gettid()");
+	newThreadIdFunc.push_back("{");
+	newThreadIdFunc.push_back("pthread_t ptid = pthread_self();");
+	newThreadIdFunc.push_back("int threadId = 0;");
+	newThreadIdFunc.push_back("memcpy(&threadId, &ptid, std::min(sizeof(threadId), sizeof(ptid)));");
+	newThreadIdFunc.push_back("return threadId;");
+	newThreadIdFunc.push_back("}");
+
+
+	std::string replacement = "id = gettid();";
+
+	for (int i = 0; i < input.size(); i++)
+	{
+		std::string curStr = input.at(i);
+		std::size_t pos = curStr.find("omp_get");
+		if (pos != std::string::npos) //if we find one
+		{
+			//replace with a call to gettid()
+			input.erase(input.begin() + i, input.begin() + i + 1);
+			input.insert(input.begin() + i, replacement);
+		}
+	}
+
+	insertAfterIncludes(newThreadIdFunc);
+
 }
