@@ -28,6 +28,11 @@ int main()
 	//find variable declarations
 	processVariables();
 
+	//i actually think we need to handle singles first
+	//justification: single is really just restricting the thread number of a pthread
+	//so it has to be done before we move it into the function.
+	//well, no, that's not true--so long as a single is always contained in a parallel or something, we could just process it later... idk
+
 	//First, handle parallels
 	bool foundConstruct = true;
 	while (foundConstruct)
@@ -50,11 +55,11 @@ int main()
 	}
 
 	//next, handle single
-	//foundConstruct = true;
-	//while (foundConstruct)
-	//{
-	//	foundConstruct = processSingle();
-	//}
+	foundConstruct = true;
+	while (foundConstruct)
+	{
+		foundConstruct = processSingle();
+	}
 
 	////next, handle critical
 	//foundConstruct = true;
@@ -471,7 +476,7 @@ bool processCritical()
 
 void criticalHelper(int start, int end)
 {
-	//TODO HANDLE CRITICAL
+	//TODO
 }
 
 bool processSingle()
@@ -522,7 +527,12 @@ bool processSingle()
 //TODO
 void singleHelper(int start, int end)
 {
-	//TODO HANDLE SINGLE
+	//for single, we just want to make sure only one thread executes it
+	//so, with this solution, just make it accessible only to thread 0
+	//this could be incredibly simple if there are already brackets around the construct
+	//just replace the #pragma line with an if statement
+	std::string newIf = "if (((StartEnd*) paramStruct)->threadNum == 0) //arbitrarily restrict it to the only guaranteed thread, 0";
+	input.at(start) = newIf;
 }
 
 void insertAfterIncludes(strvec& vecRef)
