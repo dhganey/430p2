@@ -15,7 +15,6 @@ int numThreads; //ok for this to be global, assumptions state 1 of these only
 strvec input;
 std::map < std::string, std::string> varsAndTypes;
 std::map<std::string, int> varsAndLines;
-std::vector<strvec> newFunctions;
 
 int main()
 {
@@ -52,12 +51,6 @@ int main()
 
 	//last, change all omp_get_thread_num calls to use the paramstruct
 	processGetThreadNum();
-
-	//now add all the new functions
-	for (int i = 0; i < newFunctions.size(); i++)
-	{
-		insertAfterIncludes(newFunctions.at(i));
-	}
 
 	strvec newStruct = createStartEndStruct();
 	insertAfterIncludes(newStruct);
