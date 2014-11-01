@@ -459,6 +459,18 @@ void criticalHelper(int start, int end)
 	//TODO HANDLE CRITICAL
 }
 
+//TODO
+bool processSingle()
+{
+	return true;
+}
+
+//TODO
+void singleHelper(int start, int end)
+{
+
+}
+
 void insertAfterIncludes(strvec& vecRef)
 {
 	//move past any includes
@@ -675,8 +687,21 @@ void processVariables()
 			for (int j = 1; j < tokens.size(); j++)
 			{
 				std::string varName = tokens.at(j).substr(0, tokens.at(j).length() - 1); //leave off the comma or semicolon
-				varsAndTypes[varName] = typeStr;
-				varsAndLines[varName] = i;
+
+				//handle array types, e.g. b[5]
+				if (varName.find("[") == std::string::npos) //if regular, just add type and name
+				{
+					varsAndTypes[varName] = typeStr;
+					varsAndLines[varName] = i;
+				}
+				else
+				{
+					std::string newVarName = varName.substr(0, varName.length() - varName.find("]")); //extract the actual var name
+					std::string arrayType = varName.substr(newVarName.length(), varName.length()); //get the rest
+
+					varsAndTypes[newVarName] = typeStr.append(arrayType);
+					varsAndLines[newVarName] = i;
+				}
 			}
 		}
 	}

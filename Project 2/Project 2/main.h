@@ -20,10 +20,12 @@ void processGetThreadNum();
 bool processParallel();
 bool processParallelFor();
 bool processCritical();
+bool processSingle();
 
 void parallelHelper(int start, int end);
 void parallelForHelper(int start, int end);
 void criticalHelper(int start, int end);
+void singleHelper(int start, int end);
 
 void insertAfterIncludes(strvec& vecRef);
 

@@ -4,16 +4,31 @@
 
 int main()
 {
-	int i, id;
+	int id, i, a, b[5];
+	printf( "Testing the single construct\n" );
 
-	#pragma omp parallel private(i,id) num_threads(4)
+	#pragma omp parallel shared(a,b) private(i,id) num_threads(4)
 	{
-		#pragma omp parallel for private(i,id)
-		for( i = 0; i < 16; i++ )
+		#pragma omp single
 		{
+			a = 10;
 			id = omp_get_thread_num();
-			printf( "Thread %d executes loop iteration %d\n", id, i );
+			printf( "Single construct executed by thread %d\n", id );
+		}
+
+		#pragma omp for
+		for( i = 0; i < 5; i++ )
+		{	
+			id = omp_get_thread_num();
+			printf( "Thread %d is setting b[%d]=%d\n", id, i, a );
+			b[i] = a;
 		}
 	}
+
+	printf( "After the parallel region:\n" );
+	printf( "a = %d\n", a );
+	for( i = 0; i < 5; i++ )
+		printf( "b[%d] = %d\n", i, b[i] );
+		
 	return(0);
 }
