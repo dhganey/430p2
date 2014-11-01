@@ -163,21 +163,10 @@ void parallelHelper(int start, int end)
 	currentFunction++;
 	newFunction.push_back("{");
 
-	//redeclare all private vars in the new function
-	for (int i = 0; i < privVars.size(); i++)
-	{
-		std::string typeStr = varsAndTypes[privVars.at(i)];
-		std::string newLine = typeStr.append(" ").append(privVars.at(i)).append(";");
-		newFunction.push_back(newLine);
-	}
+	redeclareVars(privVars, newFunction);
 
-	//redeclare all global vars at the top
 	strvec globalVars;
-	for (int i = 0; i < sharedVars.size(); i++)
-	{
-		std::string typeStr = varsAndTypes[sharedVars.at(i)];
-		globalVars.push_back(typeStr.append(" ").append(sharedVars.at(i)).append(";"));
-	}
+	redeclareVars(sharedVars, globalVars);
 
 	//remove all variable declarations from main
 	for (int i = 0; i < sharedVars.size(); i++) //for shared and private below
@@ -345,21 +334,10 @@ void parallelForHelper(int start, int end)
 		}
 	}
 
-	//redeclare all private vars in the new function
-	for (int i = 0; i < privVars.size(); i++)
-	{
-		std::string typeStr = varsAndTypes[privVars.at(i)];
-		std::string newLine = typeStr.append(" ").append(privVars.at(i)).append(";");
-		newFunction.push_back(newLine);
-	}
+	redeclareVars(privVars, newFunction);
 
-	//redeclare all global vars at the top
 	strvec globalVars;
-	for (int i = 0; i < sharedVars.size(); i++)
-	{
-		std::string typeStr = varsAndTypes[sharedVars.at(i)];
-		globalVars.push_back(typeStr.append(" ").append(sharedVars.at(i)).append(";"));
-	}
+	redeclareVars(sharedVars, globalVars);
 
 	//remove all variable declarations from main
 	for (int i = 0; i < sharedVars.size(); i++) //for shared and private below
@@ -860,4 +838,36 @@ std::string fixForLine(std::string forline)
 	}
 
 	return "";
+}
+
+void redeclareVars(strvec& varList, strvec& outList)
+{
+	for (int i = 0; i < varList.size(); i++)
+	{
+		std::string typeStr;
+		std::string newLine;
+
+		if (varsAndTypes.find(varList.at(i)) == varsAndTypes.end()) //if the var not there, should be array
+		{
+			std::string varNameStr = varList.at(i);
+			varNameStr = varNameStr.append("["); //add this to look for array types
+			for (std::map<std::string, std::string>::iterator it = varsAndTypes.begin(); it != varsAndTypes.end(); it++)
+			{
+				if (it->first.substr(0, varNameStr.length()).compare(varNameStr) == 0) //if varnamestr is b[ and the entry in the map starts with b[, we've found it
+				{
+					//we want to declare it as int b[5], so we still need the type
+					typeStr = it->second;
+					std::string varNameStr = it->first;
+					newLine = typeStr.append(" ").append(varNameStr).append(";");
+				}
+			}
+		}
+		else //if it's in there, append like always
+		{
+			typeStr = varsAndTypes[varList.at(i)];
+			newLine = typeStr.append(" ").append(varList.at(i)).append(";");
+		}
+
+		outList.push_back(newLine);
+	}
 }

@@ -32,3 +32,5 @@ void insertAfterIncludes(strvec& vecRef);
 strvec createStartEndStruct();
 
 std::string fixForLine(std::string forline);
+
+void redeclareVars(strvec& varList, strvec& outList);
