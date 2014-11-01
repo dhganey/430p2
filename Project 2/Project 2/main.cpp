@@ -49,6 +49,20 @@ int main()
 		foundConstruct = processCritical();
 	}
 
+	//next, handle single
+	//foundConstruct = true;
+	//while (foundConstruct)
+	//{
+	//	foundConstruct = processSingle();
+	//}
+
+	////next, handle critical
+	//foundConstruct = true;
+	//while (foundConstruct)
+	//{
+	//	foundConstruct = processCritical();
+	//}
+
 	//last, change all omp_get_thread_num calls to use the paramstruct
 	processGetThreadNum();
 
@@ -239,7 +253,8 @@ bool processParallelFor()
 	for (int i = 0; i < input.size(); i++)
 	{
 		std::string curStr = input.at(i);
-		if (curStr.substr(0, 24).compare("#pragma omp parallel for") == 0)
+		if (curStr.substr(0, 24).compare("#pragma omp parallel for") == 0 ||
+			curStr.substr(0, 15).compare("#pragma omp for") == 0)
 		{
 			foundPragma = true;
 			int j = i + 2; //move past the opening bracket
@@ -445,7 +460,7 @@ bool processCritical()
 				}
 			}
 			//at this point, j points to the ending bracket, and i points to the pragma
-			parallelHelper(i, j);
+			criticalHelper(i, j);
 		}
 		//otherwise, move on--handle it elsewhere
 	}
@@ -459,16 +474,55 @@ void criticalHelper(int start, int end)
 	//TODO HANDLE CRITICAL
 }
 
-//TODO
 bool processSingle()
 {
-	return true;
+	bool foundPragma = false;
+
+	for (int i = 0; i < input.size(); i++)
+	{
+		std::string curStr = input.at(i);
+		if (curStr.substr(0, 18).compare("#pragma omp single") == 0)
+		{
+			foundPragma = true;
+			int j = i + 2; //move past the opening bracket
+			int brackets = 1; //OK to assume we have an opening bracket
+			//find the end of the parallel region
+			while (j < input.size())
+			{
+				j++;
+
+				std::string tempStr = input.at(j);
+				if (tempStr.length() <= 0)
+				{
+					continue;
+				}
+
+				if (tempStr.at(0) == '{')
+				{
+					brackets++;
+				}
+				if (tempStr.at(0) == '}')
+				{
+					brackets--;
+				}
+				if (brackets == 0)
+				{
+					break;
+				}
+			}
+			//at this point, j points to the ending bracket, and i points to the pragma
+			singleHelper(i, j);
+		}
+		//otherwise, move on--handle it elsewhere
+	}
+
+	return foundPragma;
 }
 
 //TODO
 void singleHelper(int start, int end)
 {
-
+	//TODO HANDLE SINGLE
 }
 
 void insertAfterIncludes(strvec& vecRef)
