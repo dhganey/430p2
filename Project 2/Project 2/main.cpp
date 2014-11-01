@@ -11,15 +11,18 @@ const std::string whitespace = " \t\f\v\n\r";
 int currentFunction; //number used to differentiate newly created functions
 int uniqueVarNum; //number used to ensure created loop vars don't contradict
 int uniqueStructNum; //number used to ensure created structs don't contradict
+int numThreads; //ok for this to be global, assumptions state 1 of these only
 strvec input;
 std::map < std::string, std::string> varsAndTypes;
 std::map<std::string, int> varsAndLines;
+std::vector<strvec> newFunctions;
 
 int main()
 {
 	currentFunction = 1;
 	uniqueVarNum = 1;
 	uniqueStructNum = 1;
+	numThreads = 0;
 
 	readInput();
 
@@ -49,6 +52,12 @@ int main()
 
 	//last, change all omp_get_thread_num calls to use the paramstruct
 	processGetThreadNum();
+
+	//now add all the new functions
+	for (int i = 0; i < newFunctions.size(); i++)
+	{
+		insertAfterIncludes(newFunctions.at(i));
+	}
 
 	strvec newStruct = createStartEndStruct();
 	insertAfterIncludes(newStruct);
@@ -515,6 +524,10 @@ void printVector(strvec& vecRef)
 
 int getNumThreads(std::string str)
 {
+	if (numThreads != 0)
+	{
+		return numThreads;
+	}
 	const int NUM_THREADS_OFFSET = 11;
 	int i = 0;
 	int j = 0;
@@ -532,7 +545,8 @@ int getNumThreads(std::string str)
 					{
 						//by this point, i and j point to the parentheses around the thread num
 						//convert it to an int
-						return atoi(str.substr(i + 1, (j - i - 1)).c_str());
+						numThreads = atoi(str.substr(i + 1, (j - i - 1)).c_str());
+						return numThreads;
 					}
 				}
 			}
