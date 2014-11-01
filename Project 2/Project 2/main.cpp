@@ -15,6 +15,8 @@ int numThreads; //ok for this to be global, assumptions state 1 of these only
 strvec input;
 std::map < std::string, std::string> varsAndTypes;
 std::map<std::string, int> varsAndLines;
+strvec privVarBackup;
+strvec sharedVarBackup;
 
 int main()
 {
@@ -138,6 +140,18 @@ void parallelHelper(int start, int end)
 	strvec privVars = getConstructVars(pragmaString, "private");
 	strvec sharedVars = getConstructVars(pragmaString, "shared");
 	int numThreads = getNumThreads(pragmaString);
+
+	//maybe: save the values in a backup for redeclaration in an inner function
+	privVarBackup.clear();
+	for (int i = 0; i < privVars.size(); i++)
+	{
+		privVarBackup.push_back(privVars.at(i));
+	}
+	sharedVarBackup.clear();
+	for (int i = 0; i < sharedVars.size(); i++)
+	{
+		sharedVarBackup.push_back(sharedVars.at(i));
+	}
 
 	//create a vector for the new pthreads void* function
 	std::vector<std::string> newFunction;
@@ -315,6 +329,21 @@ void parallelForHelper(int start, int end)
 	newFunction.push_back(newFuncName);
 	currentFunction++;
 	newFunction.push_back("{");
+
+	//now handle the case when a parallel for is inside a parallel. in that case, the parfor will not have priv/shared declared
+	//it will instead use the priv/shared declared above
+	//those are backed up in global vars.
+	if (privVars.size() == 0 && sharedVars.size() == 0) //if we determine nothing is private, copy the global backup to the local strvecs
+	{
+		for (int i = 0; i < privVarBackup.size(); i++)
+		{
+			privVars.push_back(privVarBackup.at(i));
+		}
+		for (int i = 0; i < sharedVarBackup.size(); i++)
+		{
+			sharedVars.push_back(sharedVarBackup.at(i));
+		}
+	}
 
 	//redeclare all private vars in the new function
 	for (int i = 0; i < privVars.size(); i++)
@@ -751,21 +780,23 @@ void processVariables()
 			for (int j = 1; j < tokens.size(); j++)
 			{
 				std::string varName = tokens.at(j).substr(0, tokens.at(j).length() - 1); //leave off the comma or semicolon
+				varsAndTypes[varName] = typeStr;
+				varsAndLines[varName] = i;
 
-				//handle array types, e.g. b[5]
-				if (varName.find("[") == std::string::npos) //if regular, just add type and name
-				{
-					varsAndTypes[varName] = typeStr;
-					varsAndLines[varName] = i;
-				}
-				else
-				{
-					std::string newVarName = varName.substr(0, varName.length() - varName.find("]")); //extract the actual var name
-					std::string arrayType = varName.substr(newVarName.length(), varName.length()); //get the rest
+				////handle array types, e.g. b[5]
+				//if (varName.find("[") == std::string::npos) //if regular, just add type and name
+				//{
+				//	varsAndTypes[varName] = typeStr;
+				//	varsAndLines[varName] = i;
+				//}
+				//else
+				//{
+				//	std::string newVarName = varName.substr(0, varName.length() - varName.find("]")); //extract the actual var name
+				//	std::string arrayType = varName.substr(newVarName.length(), varName.length()); //get the rest
 
-					varsAndTypes[newVarName] = typeStr.append(arrayType);
-					varsAndLines[newVarName] = i;
-				}
+				//	varsAndTypes[newVarName] = typeStr.append(arrayType);
+				//	varsAndLines[newVarName] = i;
+				//}
 			}
 		}
 	}
