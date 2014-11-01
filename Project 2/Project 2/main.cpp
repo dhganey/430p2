@@ -203,34 +203,51 @@ void parallelHelper(int start, int end)
 	input.insert(input.begin() + newOffset++, tempString);
 	input.insert(input.begin() + newOffset++, "}");
 
+	//-----------------------------old stuff-------------------------------
 	//now set up a for loop to dispatch a pthread for each thread
-	loopVar = std::string("uniqueVar").append(std::to_string(uniqueVarNum));
-	uniqueVarNum++;
+	//loopVar = std::string("uniqueVar").append(std::to_string(uniqueVarNum));
+	//uniqueVarNum++;
 
-	//prep the actual creation for loop
-	tempString = std::string("for (int ").append(loopVar).append(" = 0; ").append(loopVar).append(" < ").append(std::to_string(numThreads)).append("; ").append(loopVar).append("++)");
-	input.insert(input.begin() + newOffset++, tempString);
-	input.insert(input.begin() + newOffset++, "{");
+	////prep the actual creation for loop
+	//tempString = std::string("for (int ").append(loopVar).append(" = 0; ").append(loopVar).append(" < ").append(std::to_string(numThreads)).append("; ").append(loopVar).append("++)");
+	//input.insert(input.begin() + newOffset++, tempString);
+	//input.insert(input.begin() + newOffset++, "{");
 
-	//create the struct to hold the threadnum
-	std::string paramStructString = std::string("paramStruct").append(std::to_string(uniqueStructNum));
-	std::string saveParamStructString = paramStructString;
-	uniqueStructNum++;
+	////create the struct to hold the threadnum
+	//std::string paramStructString = std::string("paramStruct").append(std::to_string(uniqueStructNum));
+	//std::string saveParamStructString = paramStructString;
+	//uniqueStructNum++;
 
-	tempString = std::string("StartEnd ").append(paramStructString).append(";");
-	paramStructString = saveParamStructString;
-	input.insert(input.begin() + newOffset++, tempString);
+	//tempString = std::string("StartEnd ").append(paramStructString).append(";");
+	//paramStructString = saveParamStructString;
+	//input.insert(input.begin() + newOffset++, tempString);
 
-	//in the for loop, assign the thread num to the struct
-	tempString = paramStructString.append(".threadNum = ").append(loopVar).append(";");
-	paramStructString = saveParamStructString;
-	input.insert(input.begin() + newOffset++, tempString);
+	////in the for loop, assign the thread num to the struct
+	//tempString = paramStructString.append(".threadNum = ").append(loopVar).append(";");
+	//paramStructString = saveParamStructString;
+	//input.insert(input.begin() + newOffset++, tempString);
 
-	//create the pthread, passing that struct
-	tempString = std::string("pthread_create(&threads[").append(loopVar).append("], NULL, ").append(smallNewFuncName).append(", (void*) &").append(paramStructString).append(");");
-	paramStructString = saveParamStructString;
-	input.insert(input.begin() + newOffset++, tempString);
-	input.insert(input.begin() + newOffset++, "}");
+	////create the pthread, passing that struct
+	//tempString = std::string("pthread_create(&threads[").append(loopVar).append("], NULL, ").append(smallNewFuncName).append(", (void*) &").append(paramStructString).append(");");
+	//paramStructString = saveParamStructString;
+	//input.insert(input.begin() + newOffset++, tempString);
+	//input.insert(input.begin() + newOffset++, "}");
+	//----------------------------------------------------------------------------
+
+	//==========new stuff==============
+	for (int i = 0; i < numThreads; i++)
+	{
+		tempString = std::string("StartEnd paramStruct").append(std::to_string(i)).append(";");
+		input.insert(input.begin() + newOffset++, tempString);
+
+		tempString = std::string("paramStruct").append(std::to_string(i)).append(".threadNum = ").append(std::to_string(i)).append(";");
+		input.insert(input.begin() + newOffset++, tempString);
+
+		tempString = std::string("pthread_create(&threads[").append(std::to_string(i)).append("], NULL, ").append(smallNewFuncName).append(", (void*) &paramStruct").append(std::to_string(i)).append(");");
+		input.insert(input.begin() + newOffset++, tempString);
+	}
+
+	//=================================
 
 	//now set up a for loop to join the pthreads
 	loopVar = std::string("uniqueVar").append(std::to_string(uniqueVarNum));
@@ -395,7 +412,7 @@ void parallelForHelper(int start, int end)
 
 		if (i == numThreads - 1) //if we're on the last loop, give all remaining iterations to this thread.
 		{
-			endIteration = numIterations;
+			endIteration = numIterations - 1; //-1 since it was going to 16
 		}
 		tempString = std::string("paramStruct").append(std::to_string(i)).append(".end = ").append(std::to_string(endIteration + 1)).append(";"); //plus 1 since for loop is < 
 		input.insert(input.begin() + newOffset++, tempString);
@@ -408,6 +425,7 @@ void parallelForHelper(int start, int end)
 		input.insert(input.begin() + newOffset++, tempString);
 	}
 
+	//now join the threads
 	for (int i = 0; i < numThreads; i++)
 	{
 		tempString = std::string("pthread_join(threads[").append(std::to_string(i)).append("], NULL);");
