@@ -20,6 +20,7 @@ strvec privVarBackup;
 strvec sharedVarBackup;
 strvec globalVars;
 int mainStartLine;
+strvec totalPrivBackup;
 
 int main()
 {
@@ -76,8 +77,11 @@ int main()
 	//last, change all omp_get_thread_num calls to use the paramstruct
 	processGetThreadNum();
 
-	refineGlobalVars();
+	eliminateDuplicates(globalVars);
 	insertAfterIncludes(globalVars);
+
+	eliminateDuplicates(totalPrivBackup);
+	declarePrivatesInMain(totalPrivBackup);
 
 	strvec newStruct = createStartEndStruct();
 	insertAfterIncludes(newStruct);
@@ -170,7 +174,9 @@ void parallelHelper(int start, int end)
 	newFunction.push_back("{");
 
 	redeclareVars(privVars, newFunction);
-	//TODO redeclare these vars in main
+	strvec privVarDeclarations;
+	redeclareVars(privVars, privVarDeclarations);
+	add(privVarDeclarations, totalPrivBackup);
 
 	redeclareVars(sharedVars, globalVars);
 
@@ -312,7 +318,9 @@ void parallelForHelper(int start, int end)
 	}
 
 	redeclareVars(privVars, newFunction);
-	//todo redeclare these vars in main
+	strvec privVarDeclarations;
+	redeclareVars(privVars, privVarDeclarations);
+	add(privVarDeclarations, totalPrivBackup);
 
 	redeclareVars(sharedVars, globalVars);
 
@@ -729,7 +737,7 @@ void processVariables()
 		}
 
 		//now that the value is preserved in the hashmap, let's remove the declaration
-		//input.at(i) = "";
+		input.at(i) = "";
 	}
 }
 
@@ -826,14 +834,36 @@ void redeclareVars(strvec& varList, strvec& outList)
 }
 
 //Eliminates duplicates from the global vars
-void refineGlobalVars()
+void eliminateDuplicates(strvec& vecRef)
 {
-	std::set<std::string> tempSet(globalVars.begin(), globalVars.end()); //sets only allow unique elements! just stuff the whole vector in, then:
-	globalVars.clear();
-	globalVars.assign(tempSet.begin(), tempSet.end());
+	std::set<std::string> tempSet(vecRef.begin(), vecRef.end()); //sets only allow unique elements! just stuff the whole vector in, then:
+	vecRef.clear();
+	vecRef.assign(tempSet.begin(), tempSet.end());
 }
 
-void redeclareVarsInMain(strvec& varList)
+void add(strvec& from, strvec& to)
 {
+	for (int i = 0; i < from.size(); i++)
+	{
+		to.push_back(from.at(i));
+	}
+}
 
+void declarePrivatesInMain(strvec& varList)
+{
+	int mainLine = 0;
+	for (mainLine; mainLine < input.size(); mainLine++)
+	{
+		std::string curStr = input.at(mainLine);
+		if (curStr.compare("int main()") == 0)
+		{
+			break;
+		}
+	}
+
+	mainLine += 2; //move past brackets
+	for (int i = 0; i < varList.size(); i++)
+	{
+		input.insert(input.begin() + mainLine++, varList.at(i));
+	}
 }

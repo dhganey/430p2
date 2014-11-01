@@ -34,6 +34,8 @@ strvec createStartEndStruct();
 std::string fixForLine(std::string forline);
 
 void redeclareVars(strvec& varList, strvec& outList);
-void refineGlobalVars();
+void eliminateDuplicates(strvec& vecRef);
 
-void redeclareVarsInMain(strvec& varList);
+void add(strvec& from, strvec& to);
+
+void declarePrivatesInMain(strvec& varList);
