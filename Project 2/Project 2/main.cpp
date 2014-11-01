@@ -19,6 +19,7 @@ std::map<std::string, int> varsAndLines;
 strvec privVarBackup;
 strvec sharedVarBackup;
 strvec globalVars;
+int mainStartLine;
 
 int main()
 {
@@ -169,11 +170,9 @@ void parallelHelper(int start, int end)
 	newFunction.push_back("{");
 
 	redeclareVars(privVars, newFunction);
+	//TODO redeclare these vars in main
 
 	redeclareVars(sharedVars, globalVars);
-
-	removeVarDeclarations(privVars);
-	removeVarDeclarations(sharedVars);
 
 	//copy the function code as-is
 	for (int i = start + 2; i < end; i++) //move start up to pass first bracket, < end to not include last bracket.
@@ -203,38 +202,7 @@ void parallelHelper(int start, int end)
 	input.insert(input.begin() + newOffset++, tempString);
 	input.insert(input.begin() + newOffset++, "}");
 
-	//-----------------------------old stuff-------------------------------
-	//now set up a for loop to dispatch a pthread for each thread
-	//loopVar = std::string("uniqueVar").append(std::to_string(uniqueVarNum));
-	//uniqueVarNum++;
-
-	////prep the actual creation for loop
-	//tempString = std::string("for (int ").append(loopVar).append(" = 0; ").append(loopVar).append(" < ").append(std::to_string(numThreads)).append("; ").append(loopVar).append("++)");
-	//input.insert(input.begin() + newOffset++, tempString);
-	//input.insert(input.begin() + newOffset++, "{");
-
-	////create the struct to hold the threadnum
-	//std::string paramStructString = std::string("paramStruct").append(std::to_string(uniqueStructNum));
-	//std::string saveParamStructString = paramStructString;
-	//uniqueStructNum++;
-
-	//tempString = std::string("StartEnd ").append(paramStructString).append(";");
-	//paramStructString = saveParamStructString;
-	//input.insert(input.begin() + newOffset++, tempString);
-
-	////in the for loop, assign the thread num to the struct
-	//tempString = paramStructString.append(".threadNum = ").append(loopVar).append(";");
-	//paramStructString = saveParamStructString;
-	//input.insert(input.begin() + newOffset++, tempString);
-
-	////create the pthread, passing that struct
-	//tempString = std::string("pthread_create(&threads[").append(loopVar).append("], NULL, ").append(smallNewFuncName).append(", (void*) &").append(paramStructString).append(");");
-	//paramStructString = saveParamStructString;
-	//input.insert(input.begin() + newOffset++, tempString);
-	//input.insert(input.begin() + newOffset++, "}");
-	//----------------------------------------------------------------------------
-
-	//==========new stuff==============
+	//now create the pthreads
 	for (int i = 0; i < numThreads; i++)
 	{
 		tempString = std::string("StartEnd paramStruct").append(std::to_string(i)).append(";");
@@ -246,8 +214,6 @@ void parallelHelper(int start, int end)
 		tempString = std::string("pthread_create(&threads[").append(std::to_string(i)).append("], NULL, ").append(smallNewFuncName).append(", (void*) &paramStruct").append(std::to_string(i)).append(");");
 		input.insert(input.begin() + newOffset++, tempString);
 	}
-
-	//=================================
 
 	//now set up a for loop to join the pthreads
 	loopVar = std::string("uniqueVar").append(std::to_string(uniqueVarNum));
@@ -346,12 +312,9 @@ void parallelForHelper(int start, int end)
 	}
 
 	redeclareVars(privVars, newFunction);
+	//todo redeclare these vars in main
 
-	strvec globalVars;
 	redeclareVars(sharedVars, globalVars);
-
-	removeVarDeclarations(privVars);
-	removeVarDeclarations(sharedVars);
 
 	//move the code to the new function
 	//first modify the for loop to use the start and end from the new struct
@@ -728,6 +691,7 @@ void processVariables()
 		{
 			if (curStr.substr(0, 8).compare("int main") == 0) //special case for this int!
 			{
+				mainStartLine = i;
 				continue;
 			}
 			typeStr = intStr;
@@ -738,12 +702,12 @@ void processVariables()
 			typeStr = doubleStr;
 			offset = 7;
 		}
-		else
+		else //TODO could include more primitives here
 		{
 			continue; //not a var declaration
 		}
 
-
+		//everything below here applies only to var declarations, since we continued above
 		if (curStr.find(",") == std::string::npos) //if no commas
 		{
 			std::string varName = curStr.substr(offset, (curStr.length() - offset - 1)); //-1 to leave semicolon off
@@ -763,6 +727,9 @@ void processVariables()
 				varsAndLines[varName] = i;
 			}
 		}
+
+		//now that the value is preserved in the hashmap, let's remove the declaration
+		//input.at(i) = "";
 	}
 }
 
@@ -866,14 +833,7 @@ void refineGlobalVars()
 	globalVars.assign(tempSet.begin(), tempSet.end());
 }
 
-void removeVarDeclarations(strvec& varList)
+void redeclareVarsInMain(strvec& varList)
 {
-	////remove all variable declarations from main
-	//for (int i = 0; i < varList.size(); i++) //for shared and private below
-	//{
-	//	if (varsAndLines.find(varList.at(i)) != varsAndLines.end())
-	//	{
-	//		input.at(varsAndLines[varList.at(i)]) = "";
-	//	}
-	//}
+
 }

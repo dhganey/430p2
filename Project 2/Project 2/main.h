@@ -35,4 +35,5 @@ std::string fixForLine(std::string forline);
 
 void redeclareVars(strvec& varList, strvec& outList);
 void refineGlobalVars();
-void removeVarDeclarations(strvec& varList);
+
+void redeclareVarsInMain(strvec& varList);

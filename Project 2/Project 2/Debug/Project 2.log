@@ -1,32 +1,32 @@
-﻿Build started 11/1/2014 15:43:13.
+﻿Build started 11/1/2014 16:19:53.
      1>Project "C:\Users\David\Google Drive\2014-2015\Fall\CSE 430\Project 2\Project 2\Project 2\Project 2.vcxproj" on node 2 (Build target(s)).
      1>ClCompile:
          C:\Program Files (x86)\Microsoft Visual Studio 12.0\VC\bin\CL.exe /c /ZI /nologo /W3 /WX- /sdl /Od /Oy- /D WIN32 /D _DEBUG /D _CONSOLE /D _LIB /D _UNICODE /D UNICODE /Gm /EHsc /RTC1 /MDd /GS /fp:precise /Zc:wchar_t /Zc:forScope /Fo"Debug\\" /Fd"Debug\vc120.pdb" /Gd /TP /analyze- /errorReport:prompt main.cpp
          main.cpp
-     1>c:\users\david\google drive\2014-2015\fall\cse 430\project 2\project 2\project 2\main.cpp(99): warning C4018: '<' : signed/unsigned mismatch
-     1>c:\users\david\google drive\2014-2015\fall\cse 430\project 2\project 2\project 2\main.cpp(109): warning C4018: '<' : signed/unsigned mismatch
-     1>c:\users\david\google drive\2014-2015\fall\cse 430\project 2\project 2\project 2\main.cpp(151): warning C4018: '<' : signed/unsigned mismatch
-     1>c:\users\david\google drive\2014-2015\fall\cse 430\project 2\project 2\project 2\main.cpp(156): warning C4018: '<' : signed/unsigned mismatch
-     1>c:\users\david\google drive\2014-2015\fall\cse 430\project 2\project 2\project 2\main.cpp(272): warning C4018: '<' : signed/unsigned mismatch
-     1>c:\users\david\google drive\2014-2015\fall\cse 430\project 2\project 2\project 2\main.cpp(282): warning C4018: '<' : signed/unsigned mismatch
-     1>c:\users\david\google drive\2014-2015\fall\cse 430\project 2\project 2\project 2\main.cpp(338): warning C4018: '<' : signed/unsigned mismatch
-     1>c:\users\david\google drive\2014-2015\fall\cse 430\project 2\project 2\project 2\main.cpp(342): warning C4018: '<' : signed/unsigned mismatch
-     1>c:\users\david\google drive\2014-2015\fall\cse 430\project 2\project 2\project 2\main.cpp(443): warning C4018: '<' : signed/unsigned mismatch
-     1>c:\users\david\google drive\2014-2015\fall\cse 430\project 2\project 2\project 2\main.cpp(452): warning C4018: '<' : signed/unsigned mismatch
-     1>c:\users\david\google drive\2014-2015\fall\cse 430\project 2\project 2\project 2\main.cpp(494): warning C4018: '<' : signed/unsigned mismatch
-     1>c:\users\david\google drive\2014-2015\fall\cse 430\project 2\project 2\project 2\main.cpp(503): warning C4018: '<' : signed/unsigned mismatch
-     1>c:\users\david\google drive\2014-2015\fall\cse 430\project 2\project 2\project 2\main.cpp(550): warning C4018: '<' : signed/unsigned mismatch
-     1>c:\users\david\google drive\2014-2015\fall\cse 430\project 2\project 2\project 2\main.cpp(596): warning C4018: '<' : signed/unsigned mismatch
-     1>c:\users\david\google drive\2014-2015\fall\cse 430\project 2\project 2\project 2\main.cpp(611): warning C4018: '<' : signed/unsigned mismatch
-     1>c:\users\david\google drive\2014-2015\fall\cse 430\project 2\project 2\project 2\main.cpp(619): warning C4018: '<' : signed/unsigned mismatch
-     1>c:\users\david\google drive\2014-2015\fall\cse 430\project 2\project 2\project 2\main.cpp(641): warning C4018: '<' : signed/unsigned mismatch
-     1>c:\users\david\google drive\2014-2015\fall\cse 430\project 2\project 2\project 2\main.cpp(667): warning C4018: '<' : signed/unsigned mismatch
-     1>c:\users\david\google drive\2014-2015\fall\cse 430\project 2\project 2\project 2\main.cpp(720): warning C4018: '<' : signed/unsigned mismatch
-     1>c:\users\david\google drive\2014-2015\fall\cse 430\project 2\project 2\project 2\main.cpp(759): warning C4018: '<' : signed/unsigned mismatch
-     1>c:\users\david\google drive\2014-2015\fall\cse 430\project 2\project 2\project 2\main.cpp(773): warning C4018: '<' : signed/unsigned mismatch
-     1>c:\users\david\google drive\2014-2015\fall\cse 430\project 2\project 2\project 2\main.cpp(802): warning C4018: '<' : signed/unsigned mismatch
-     1>c:\users\david\google drive\2014-2015\fall\cse 430\project 2\project 2\project 2\main.cpp(831): warning C4018: '<' : signed/unsigned mismatch
-     1>c:\users\david\google drive\2014-2015\fall\cse 430\project 2\project 2\project 2\main.cpp(680): warning C4715: 'getStartNum' : not all control paths return a value
+     1>c:\users\david\google drive\2014-2015\fall\cse 430\project 2\project 2\project 2\main.cpp(100): warning C4018: '<' : signed/unsigned mismatch
+     1>c:\users\david\google drive\2014-2015\fall\cse 430\project 2\project 2\project 2\main.cpp(110): warning C4018: '<' : signed/unsigned mismatch
+     1>c:\users\david\google drive\2014-2015\fall\cse 430\project 2\project 2\project 2\main.cpp(152): warning C4018: '<' : signed/unsigned mismatch
+     1>c:\users\david\google drive\2014-2015\fall\cse 430\project 2\project 2\project 2\main.cpp(157): warning C4018: '<' : signed/unsigned mismatch
+     1>c:\users\david\google drive\2014-2015\fall\cse 430\project 2\project 2\project 2\main.cpp(238): warning C4018: '<' : signed/unsigned mismatch
+     1>c:\users\david\google drive\2014-2015\fall\cse 430\project 2\project 2\project 2\main.cpp(248): warning C4018: '<' : signed/unsigned mismatch
+     1>c:\users\david\google drive\2014-2015\fall\cse 430\project 2\project 2\project 2\main.cpp(304): warning C4018: '<' : signed/unsigned mismatch
+     1>c:\users\david\google drive\2014-2015\fall\cse 430\project 2\project 2\project 2\main.cpp(308): warning C4018: '<' : signed/unsigned mismatch
+     1>c:\users\david\google drive\2014-2015\fall\cse 430\project 2\project 2\project 2\main.cpp(406): warning C4018: '<' : signed/unsigned mismatch
+     1>c:\users\david\google drive\2014-2015\fall\cse 430\project 2\project 2\project 2\main.cpp(415): warning C4018: '<' : signed/unsigned mismatch
+     1>c:\users\david\google drive\2014-2015\fall\cse 430\project 2\project 2\project 2\main.cpp(457): warning C4018: '<' : signed/unsigned mismatch
+     1>c:\users\david\google drive\2014-2015\fall\cse 430\project 2\project 2\project 2\main.cpp(466): warning C4018: '<' : signed/unsigned mismatch
+     1>c:\users\david\google drive\2014-2015\fall\cse 430\project 2\project 2\project 2\main.cpp(513): warning C4018: '<' : signed/unsigned mismatch
+     1>c:\users\david\google drive\2014-2015\fall\cse 430\project 2\project 2\project 2\main.cpp(559): warning C4018: '<' : signed/unsigned mismatch
+     1>c:\users\david\google drive\2014-2015\fall\cse 430\project 2\project 2\project 2\main.cpp(574): warning C4018: '<' : signed/unsigned mismatch
+     1>c:\users\david\google drive\2014-2015\fall\cse 430\project 2\project 2\project 2\main.cpp(582): warning C4018: '<' : signed/unsigned mismatch
+     1>c:\users\david\google drive\2014-2015\fall\cse 430\project 2\project 2\project 2\main.cpp(604): warning C4018: '<' : signed/unsigned mismatch
+     1>c:\users\david\google drive\2014-2015\fall\cse 430\project 2\project 2\project 2\main.cpp(630): warning C4018: '<' : signed/unsigned mismatch
+     1>c:\users\david\google drive\2014-2015\fall\cse 430\project 2\project 2\project 2\main.cpp(683): warning C4018: '<' : signed/unsigned mismatch
+     1>c:\users\david\google drive\2014-2015\fall\cse 430\project 2\project 2\project 2\main.cpp(723): warning C4018: '<' : signed/unsigned mismatch
+     1>c:\users\david\google drive\2014-2015\fall\cse 430\project 2\project 2\project 2\main.cpp(740): warning C4018: '<' : signed/unsigned mismatch
+     1>c:\users\david\google drive\2014-2015\fall\cse 430\project 2\project 2\project 2\main.cpp(769): warning C4018: '<' : signed/unsigned mismatch
+     1>c:\users\david\google drive\2014-2015\fall\cse 430\project 2\project 2\project 2\main.cpp(798): warning C4018: '<' : signed/unsigned mismatch
+     1>c:\users\david\google drive\2014-2015\fall\cse 430\project 2\project 2\project 2\main.cpp(643): warning C4715: 'getStartNum' : not all control paths return a value
        Link:
          C:\Program Files (x86)\Microsoft Visual Studio 12.0\VC\bin\link.exe /ERRORREPORT:PROMPT /OUT:"C:\Users\David\Google Drive\2014-2015\Fall\CSE 430\Project 2\Project 2\Debug\Project 2.exe" /INCREMENTAL /NOLOGO kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib /MANIFEST /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /manifest:embed /DEBUG /PDB:"C:\Users\David\Google Drive\2014-2015\Fall\CSE 430\Project 2\Project 2\Debug\Project 2.pdb" /SUBSYSTEM:CONSOLE /TLBID:1 /DYNAMICBASE /NXCOMPAT /IMPLIB:"C:\Users\David\Google Drive\2014-2015\Fall\CSE 430\Project 2\Project 2\Debug\Project 2.lib" /MACHINE:X86 Debug\main.obj
          Project 2.vcxproj -> C:\Users\David\Google Drive\2014-2015\Fall\CSE 430\Project 2\Project 2\Debug\Project 2.exe
@@ -34,4 +34,4 @@
 
 Build succeeded.
 
-Time Elapsed 00:00:00.70
+Time Elapsed 00:00:00.74
