@@ -4,6 +4,7 @@
 #include <sstream>
 #include <iterator>
 #include <map>
+#include <set>
 
 #include "main.h"
 
@@ -17,6 +18,7 @@ std::map < std::string, std::string> varsAndTypes;
 std::map<std::string, int> varsAndLines;
 strvec privVarBackup;
 strvec sharedVarBackup;
+strvec globalVars;
 
 int main()
 {
@@ -72,6 +74,9 @@ int main()
 
 	//last, change all omp_get_thread_num calls to use the paramstruct
 	processGetThreadNum();
+
+	refineGlobalVars();
+	insertAfterIncludes(globalVars);
 
 	strvec newStruct = createStartEndStruct();
 	insertAfterIncludes(newStruct);
@@ -165,20 +170,10 @@ void parallelHelper(int start, int end)
 
 	redeclareVars(privVars, newFunction);
 
-	strvec globalVars;
 	redeclareVars(sharedVars, globalVars);
 
-	//remove all variable declarations from main
-	for (int i = 0; i < sharedVars.size(); i++) //for shared and private below
-	{
-		int declLine = varsAndLines[sharedVars.at(i)];
-		input.at(declLine) = "";
-	}
-	for (int i = 0; i < privVars.size(); i++)
-	{
-		int declLine = varsAndLines[privVars.at(i)];
-		input.at(declLine) = "";
-	}
+	removeVarDeclarations(privVars);
+	removeVarDeclarations(sharedVars);
 
 	//copy the function code as-is
 	for (int i = start + 2; i < end; i++) //move start up to pass first bracket, < end to not include last bracket.
@@ -249,7 +244,6 @@ void parallelHelper(int start, int end)
 
 	//insert the new stuff, in reverse order!!
 	insertAfterIncludes(newFunction); //first, new function
-	insertAfterIncludes(globalVars);
 }
 
 //Returns true if it processes something
@@ -339,17 +333,8 @@ void parallelForHelper(int start, int end)
 	strvec globalVars;
 	redeclareVars(sharedVars, globalVars);
 
-	//remove all variable declarations from main
-	for (int i = 0; i < sharedVars.size(); i++) //for shared and private below
-	{
-		int declLine = varsAndLines[sharedVars.at(i)];
-		input.at(declLine) = "";
-	}
-	for (int i = 0; i < privVars.size(); i++)
-	{
-		int declLine = varsAndLines[privVars.at(i)];
-		input.at(declLine) = "";
-	}
+	removeVarDeclarations(privVars);
+	removeVarDeclarations(sharedVars);
 
 	//move the code to the new function
 	//first modify the for loop to use the start and end from the new struct
@@ -431,8 +416,6 @@ void parallelForHelper(int start, int end)
 
 	//insert the new stuff, in reverse order!!
 	insertAfterIncludes(newFunction); //first, new function
-	insertAfterIncludes(globalVars);
-
 }
 
 bool processCritical()
@@ -760,21 +743,6 @@ void processVariables()
 				std::string varName = tokens.at(j).substr(0, tokens.at(j).length() - 1); //leave off the comma or semicolon
 				varsAndTypes[varName] = typeStr;
 				varsAndLines[varName] = i;
-
-				////handle array types, e.g. b[5]
-				//if (varName.find("[") == std::string::npos) //if regular, just add type and name
-				//{
-				//	varsAndTypes[varName] = typeStr;
-				//	varsAndLines[varName] = i;
-				//}
-				//else
-				//{
-				//	std::string newVarName = varName.substr(0, varName.length() - varName.find("]")); //extract the actual var name
-				//	std::string arrayType = varName.substr(newVarName.length(), varName.length()); //get the rest
-
-				//	varsAndTypes[newVarName] = typeStr.append(arrayType);
-				//	varsAndLines[newVarName] = i;
-				//}
 			}
 		}
 	}
@@ -870,4 +838,24 @@ void redeclareVars(strvec& varList, strvec& outList)
 
 		outList.push_back(newLine);
 	}
+}
+
+//Eliminates duplicates from the global vars
+void refineGlobalVars()
+{
+	std::set<std::string> tempSet(globalVars.begin(), globalVars.end()); //sets only allow unique elements! just stuff the whole vector in, then:
+	globalVars.clear();
+	globalVars.assign(tempSet.begin(), tempSet.end());
+}
+
+void removeVarDeclarations(strvec& varList)
+{
+	////remove all variable declarations from main
+	//for (int i = 0; i < varList.size(); i++) //for shared and private below
+	//{
+	//	if (varsAndLines.find(varList.at(i)) != varsAndLines.end())
+	//	{
+	//		input.at(varsAndLines[varList.at(i)]) = "";
+	//	}
+	//}
 }
