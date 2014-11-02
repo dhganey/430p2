@@ -9,21 +9,25 @@
 #include "main.h"
 
 const std::string whitespace = " \t\f\v\n\r";
+
 int currentFunction; //number used to differentiate newly created functions
 int uniqueVarNum; //number used to ensure created loop vars don't contradict
 int uniqueStructNum; //number used to ensure created structs don't contradict
 int numThreads; //ok for this to be global, assumptions state 1 of these only
-strvec input;
-std::map < std::string, std::string> varsAndTypes;
-std::map<std::string, int> varsAndLines;
-strvec privVarBackup;
-strvec sharedVarBackup;
-strvec globalVars;
-int mainStartLine;
-strvec totalPrivBackup;
+
+strvec input; //primary vector holding input
+strvec privVarBackup; //holds all private vars, which are redeclared in main at the end
+strvec sharedVarBackup; //holds all shared vars
+strvec globalVars; //holds shared vars which should be declared global
+strvec totalPrivBackup; //backs up all private vars
+
+std::map < std::string, std::string> varsAndTypes; //maps a variable name to the string of its type
+std::map<std::string, int> varsAndLines; //maps a variable name to the line on which it was declared
+
 
 int main()
 {
+	//set the global ints
 	currentFunction = 1;
 	uniqueVarNum = 1;
 	uniqueStructNum = 1;
@@ -31,13 +35,7 @@ int main()
 
 	readInput();
 
-	//find variable declarations
 	processVariables();
-
-	//i actually think we need to handle singles first
-	//justification: single is really just restricting the thread number of a pthread
-	//so it has to be done before we move it into the function.
-	//well, no, that's not true--so long as a single is always contained in a parallel or something, we could just process it later... idk
 
 	//First, handle parallels
 	bool foundConstruct = true;
@@ -67,35 +65,34 @@ int main()
 		foundConstruct = processSingle();
 	}
 
-	////next, handle critical
-	//foundConstruct = true;
-	//while (foundConstruct)
-	//{
-	//	foundConstruct = processCritical();
-	//}
-
 	//last, change all omp_get_thread_num calls to use the paramstruct
 	processGetThreadNum();
 
+	//put global vars at the top
 	eliminateDuplicates(globalVars);
 	insertAfterIncludes(globalVars);
 
+	//put private vars back in main
 	eliminateDuplicates(totalPrivBackup);
 	declarePrivatesInMain(totalPrivBackup);
 
+	//create and insert the parameter struct
 	strvec newStruct = createStartEndStruct();
 	insertAfterIncludes(newStruct);
 
+	//create and add the mutex call
 	strvec synchronization;
 	synchronization.push_back("pthread_mutex_t theMutex = PTHREAD_MUTEX_INITIALIZER;");
 	insertAfterIncludes(synchronization);
 
+	//create and add new includes
 	strvec includes;
 	includes.push_back("#include <pthread.h>");
 	includes.push_back("#include <algorithm>");
 	includes.push_back("#include <cstring>");
 	insertAfterIncludes(includes);
 
+	//print output (to use for file redirection)
 	printVector(input);
 }
 
@@ -147,6 +144,8 @@ bool processParallel()
 	return foundPragma;
 }
 
+//Worker function. Start and end represent the #pragma line and the closing brace
+//Drives all the work for a parallel
 void parallelHelper(int start, int end)
 {
 	//grab the necessary values from the #pragma line
@@ -155,7 +154,7 @@ void parallelHelper(int start, int end)
 	strvec sharedVars = getConstructVars(pragmaString, "shared");
 	int numThreads = getNumThreads(pragmaString);
 
-	//maybe: save the values in a backup for redeclaration in an inner function
+	//save the values in a backup for redeclaration in an inner function
 	privVarBackup.clear();
 	for (int i = 0; i < privVars.size(); i++)
 	{
@@ -170,6 +169,7 @@ void parallelHelper(int start, int end)
 	//create a vector for the new pthreads void* function
 	std::vector<std::string> newFunction;
 
+	//add to the new function
 	std::string newFuncName;
 	std::string smallNewFuncName = std::string("func").append(std::to_string(currentFunction));
 	newFuncName.append("void* func").append(std::to_string(currentFunction)).append("(void* paramStruct)");
@@ -177,11 +177,13 @@ void parallelHelper(int start, int end)
 	currentFunction++;
 	newFunction.push_back("{");
 
+	//redeclare variables in the new function
 	redeclareVars(privVars, newFunction);
 	strvec privVarDeclarations;
 	redeclareVars(privVars, privVarDeclarations);
 	add(privVarDeclarations, totalPrivBackup);
 
+	//stick shared vars in the global vector for declaration later
 	redeclareVars(sharedVars, globalVars);
 
 	//copy the function code as-is
@@ -299,6 +301,8 @@ bool processParallelFor()
 
 }
 
+//Worker function. Start and end represent the #pragma line and the closing brace
+//Drives all the work for a parallel for
 void parallelForHelper(int start, int end)
 {
 	//grab the necessary values from the #pragma line
@@ -332,11 +336,13 @@ void parallelForHelper(int start, int end)
 		}
 	}
 
+	//redeclare privates in the new function
 	redeclareVars(privVars, newFunction);
 	strvec privVarDeclarations;
 	redeclareVars(privVars, privVarDeclarations);
 	add(privVarDeclarations, totalPrivBackup);
 
+	//globals will appear later
 	redeclareVars(sharedVars, globalVars);
 
 	//move the code to the new function
@@ -398,7 +404,7 @@ void parallelForHelper(int start, int end)
 
 		if (i == numThreads - 1) //if we're on the last loop, give all remaining iterations to this thread.
 		{
-			endIteration = numIterations - 1; //-1 since it was going to 16
+			endIteration = numIterations - 1; //-1 to fix off by one error
 		}
 		tempString = std::string("paramStruct").append(std::to_string(i)).append(".end = ").append(std::to_string(endIteration + 1)).append(";"); //plus 1 since for loop is < 
 		input.insert(input.begin() + newOffset++, tempString);
@@ -422,6 +428,8 @@ void parallelForHelper(int start, int end)
 	insertAfterIncludes(newFunction); //first, new function
 }
 
+//Returns true if it processes something
+//Returns false if it never finds a critical
 bool processCritical()
 {
 	bool foundPragma = false;
@@ -468,12 +476,17 @@ bool processCritical()
 
 }
 
+//Worker function. Start and end represent the #pragma line and the closing brace
+//Drives all the work for a critical
 void criticalHelper(int start, int end)
 {
+	//simply lock at the beginning and the end
 	input.at(start) = "pthread_mutex_lock( &theMutex );";
 	input.insert(input.begin() + end + 1, "pthread_mutex_unlock (&theMutex );");
 }
 
+//Returns true if it processes something
+//Returns false if it never finds a single
 bool processSingle()
 {
 	bool foundPragma = false;
@@ -519,17 +532,18 @@ bool processSingle()
 	return foundPragma;
 }
 
-//TODO
+//Worker function. Start and end represent the #pragma line and the closing brace
+//Drives all the work for a single
 void singleHelper(int start, int end)
 {
 	//for single, we just want to make sure only one thread executes it
 	//so, with this solution, just make it accessible only to thread 0
-	//this could be incredibly simple if there are already brackets around the construct
 	//just replace the #pragma line with an if statement
 	std::string newIf = "if (((StartEnd*) paramStruct)->threadNum == 0) //arbitrarily restrict it to the only guaranteed thread, 0";
 	input.at(start) = newIf;
 }
 
+//Pushes the vecRef into input after the include statements (at the top)
 void insertAfterIncludes(strvec& vecRef)
 {
 	//move past any includes
@@ -543,13 +557,14 @@ void insertAfterIncludes(strvec& vecRef)
 	}
 
 	//once we're here, we're past the includes and we can copy the new function
-	//for some reason, we need to insert this in reverse order
+	//we need to insert this in reverse order
 	for (int j = vecRef.size()-1; j >= 0; j--)
 	{
 		input.insert(input.begin() + i, vecRef.at(j));
 	}
 }
 
+//Reads the input file line by line
 void readInput()
 {
 	std::string temp;
@@ -562,12 +577,14 @@ void readInput()
 	}
 }
 
+//Removes whitespace from the beginning of the line
 void trimLeft(std::string& str)
 {
 	int start = str.find_first_not_of(whitespace);
 	str.erase(0, start);
 }
 
+//Removes whitespace from the end of the line
 void trimRight(std::string& str)
 {
 	//strange case--#pragma omp for is failing!
@@ -584,6 +601,7 @@ void trimRight(std::string& str)
 	str.erase(str.begin() + end, str.end()-1);
 }
 
+//Just outputs vecRef
 void printVector(strvec& vecRef)
 {
 	for (int i = 0; i < vecRef.size(); i++)
@@ -592,6 +610,7 @@ void printVector(strvec& vecRef)
 	}
 }
 
+//Grabs the number of threads from the str (#pragma line)
 int getNumThreads(std::string str)
 {
 	if (numThreads != 0)
@@ -626,6 +645,7 @@ int getNumThreads(std::string str)
 	return -1; //caller should check for this error case
 }
 
+//Grabs the number of threads from the str (for loop line)
 int getNumIterations(std::string str)
 {
 	//for( i = 0; i < 16; i++ )
@@ -655,6 +675,7 @@ int getNumIterations(std::string str)
 	return -1; //caller should check for this error case
 }
 
+//Grabs the iteration start from the str (for loop line)
 int getStartNum(std::string str)
 {
 	for (int i = 0; i < str.length(); i++)
@@ -672,13 +693,14 @@ int getStartNum(std::string str)
 	}
 }
 
+//Grabs construct vars for the criteria parameter (shared or private)
 strvec getConstructVars(std::string str, std::string criteria)
 {
 	const int OFFSET = criteria.length();
 	std::vector<std::string> privVars;
 
 	std::size_t priv = str.find(criteria);
-	if (priv == std::string::npos) //if no private construct
+	if (priv == std::string::npos) //if no private/shared construct
 	{
 		return privVars;
 	}
@@ -705,6 +727,9 @@ strvec getConstructVars(std::string str, std::string criteria)
 	return privVars;
 }
 
+//Iterates through the whole program looking for variable declarations
+//Supports ONLY int and double declarations
+//NOTE: This DELETES all declarations (converts the line to ""), since they are added in appropriate locations later
 void processVariables()
 {
 	const std::string intStr = "int";
@@ -721,7 +746,6 @@ void processVariables()
 		{
 			if (curStr.substr(0, 8).compare("int main") == 0) //special case for this int!
 			{
-				mainStartLine = i;
 				continue;
 			}
 			typeStr = intStr;
@@ -758,11 +782,13 @@ void processVariables()
 			}
 		}
 
-		//now that the value is preserved in the hashmap, let's remove the declaration
+		//now that the value is preserved in the hashmap, remove the declaration
 		input.at(i) = "";
 	}
 }
 
+//Iterates through the whole program looking for omp_get_thread_num calls
+//Replaces them with a call to the paramStruct
 void processGetThreadNum()
 {
 	std::string replacement = "id = ((StartEnd*) paramStruct)->threadNum;";
@@ -779,6 +805,7 @@ void processGetThreadNum()
 	}
 }
 
+//Simply creates the standard StartEnd struct
 strvec createStartEndStruct()
 {
 	strvec newStruct;
@@ -792,6 +819,7 @@ strvec createStartEndStruct()
 	return newStruct;
 }
 
+//Converts the for loop line to use the paramStruct instead of the loop variable
 std::string fixForLine(std::string forline)
 {
 	//determine the loop variable name
@@ -823,6 +851,9 @@ std::string fixForLine(std::string forline)
 	return "";
 }
 
+//Redeclares the vars in varlist by pushing them to outlist
+//Note: Array types make this function confusing. If a variable is declared as int b[5], its entry in the varList will just be "b"
+//All variables should be in the hashmap, so if we don't find "b", assume we're looking for "b["
 void redeclareVars(strvec& varList, strvec& outList)
 {
 	for (int i = 0; i < varList.size(); i++)
@@ -830,7 +861,7 @@ void redeclareVars(strvec& varList, strvec& outList)
 		std::string typeStr;
 		std::string newLine;
 
-		if (varsAndTypes.find(varList.at(i)) == varsAndTypes.end()) //if the var not there, should be array
+		if (varsAndTypes.find(varList.at(i)) == varsAndTypes.end()) //if the var not there, should be array type
 		{
 			std::string varNameStr = varList.at(i);
 			varNameStr = varNameStr.append("["); //add this to look for array types
@@ -863,6 +894,7 @@ void eliminateDuplicates(strvec& vecRef)
 	vecRef.assign(tempSet.begin(), tempSet.end());
 }
 
+//Simple vector move function, pushes from from to to
 void add(strvec& from, strvec& to)
 {
 	for (int i = 0; i < from.size(); i++)
@@ -871,6 +903,7 @@ void add(strvec& from, strvec& to)
 	}
 }
 
+//Declares the varlist in the main function
 void declarePrivatesInMain(strvec& varList)
 {
 	int mainLine = 0;
