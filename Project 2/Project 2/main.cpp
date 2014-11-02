@@ -87,7 +87,7 @@ int main()
 	insertAfterIncludes(newStruct);
 
 	strvec synchronization;
-	synchronization.push_back("pthread_mutex_t theMutex = PTHREAD_MUTEX_INITIALIZER");
+	synchronization.push_back("pthread_mutex_t theMutex = PTHREAD_MUTEX_INITIALIZER;");
 	insertAfterIncludes(synchronization);
 
 	strvec includes;
@@ -252,31 +252,42 @@ bool processParallelFor()
 			curStr.substr(0, 15).compare("#pragma omp for") == 0)
 		{
 			foundPragma = true;
-			int j = i + 2; //move past the opening bracket
-			int brackets = 1; //OK to assume we have an opening bracket
-			//find the end of the parallel region
-			while (j < input.size())
+			int j = i + 2; //move up to pragma and pass the for loop
+			if (input.at(j).substr(0,1).compare("{") == 0) //if the for is contained in brackets. weird case also where trim did not remove tab after bracket
 			{
-				j++;
+				int brackets = 1;
+				//find the end of the parallel region
+				while (j < input.size())
+				{
+					j++;
 
-				std::string tempStr = input.at(j);
-				if (tempStr.length() <= 0)
-				{
-					continue;
-				}
+					std::string tempStr = input.at(j);
+					if (tempStr.length() <= 0)
+					{
+						continue;
+					}
 
-				if (tempStr.at(0) == '{')
-				{
-					brackets++;
+					if (tempStr.at(0) == '{')
+					{
+						brackets++;
+					}
+					if (tempStr.at(0) == '}')
+					{
+						brackets--;
+					}
+					if (brackets == 0)
+					{
+						break;
+					}
 				}
-				if (tempStr.at(0) == '}')
-				{
-					brackets--;
-				}
-				if (brackets == 0)
-				{
-					break;
-				}
+			}
+			else //if there are no brackets, then j is pointing to the contents of the for loop
+			{
+				i += 2;
+				j += 2;
+				input.insert(input.begin() + i, "{");
+				input.insert(input.begin() + j, "}");
+				i -= 2; //move i back to the pragma
 			}
 			//at this point, j points to the ending bracket, and i points to the pragma
 			parallelForHelper(i, j);
@@ -559,6 +570,12 @@ void trimLeft(std::string& str)
 
 void trimRight(std::string& str)
 {
+	//strange case--#pragma omp for is failing!
+	if (str.substr(0, 15).compare("#pragma omp for") == 0) //not already trimmed right, so substr
+	{
+		return; //no need
+	}
+
 	int end = str.find_last_not_of(whitespace);
 	if (end < 1)
 	{
