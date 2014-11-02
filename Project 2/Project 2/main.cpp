@@ -86,6 +86,10 @@ int main()
 	strvec newStruct = createStartEndStruct();
 	insertAfterIncludes(newStruct);
 
+	strvec synchronization;
+	synchronization.push_back("pthread_mutex_t theMutex = PTHREAD_MUTEX_INITIALIZER");
+	insertAfterIncludes(synchronization);
+
 	strvec includes;
 	includes.push_back("#include <pthread.h>");
 	includes.push_back("#include <algorithm>");
@@ -455,7 +459,8 @@ bool processCritical()
 
 void criticalHelper(int start, int end)
 {
-	//TODO
+	input.at(start) = "pthread_mutex_lock( &theMutex );";
+	input.insert(input.begin() + end + 1, "pthread_mutex_unlock (&theMutex );");
 }
 
 bool processSingle()
