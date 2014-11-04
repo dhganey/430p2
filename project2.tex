@@ -60,7 +60,7 @@ After processing variables, the main processing begins. Each construct is handle
 This is repeated for each construct variety. At the very end, it iterates through the entire program looking for \texttt{omp\_get\_thread\_num()} calls, and replaces those as well. Finally, it declares global variables and new \texttt{include} statements at the top. The last task of the program is to print the entire \texttt{input} vector, which will be redirected to the appropriate file on the command line.
 
 \subsection{Parallel}
-The helper functions for both \texttt{parallel} and \texttt{parallel for} clauses are very simple, and are described here. Helper functions analyze the \texttt{\#pragma} line and record the private and shared variables, as well as the number of threads (which is saved globally). It then creates the new pthreads function. It starts by redeclaring private variables (using the hashmap described above). It copies the function code as-is to the new function. It then uses a loop to dispatch the pthreads.
+The helper functions for both \texttt{parallel} and \texttt{parallel for} clauses are very similar, and are described here. Helper functions analyze the \texttt{\#pragma} line and record the private and shared variables, as well as the number of threads (which is saved globally). It then creates the new pthreads function. It starts by redeclaring private variables (using the hashmap described above). It copies the function code as-is to the new function. It then uses a loop to dispatch the pthreads.
 \newline \newline
 Before creating each pthread, it creates a StartEnd struct which is passed to the thread. The values for the struct are modified appropriately. The struct contains the following data:
 \newline
