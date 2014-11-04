@@ -72,14 +72,9 @@ For standard \texttt{parallel} constructs, it simply creates a pthread for each 
 The \texttt{\#pragma omp critical} construct establishes a critical section around an area. This is achieved in this code through the use of a global mutex. The mutex is declared at the top, and when a critical section is found, \texttt{pthread\_mutex\_lock} and \texttt{pthread\_mutex\_unlock} commands are placed around it.
 
 \subsection{Single}
-The \texttt{\#pragma omp single} construct states that only one thread can execute the code contained within. For this assignment, I chose to restrict execution to a specific thread number. The logical choice was thread 0, which is guaranteed to exist if a pthread is running. A simple if statement establishes if that thread is permitted to enter the single section.
+The \texttt{\#pragma omp single} construct states that only one thread can execute the code contained within. For this assignment, I chose to restrict execution to a specific thread number. The logical choice was thread 0, which is guaranteed to exist if a pthread is running. A simple if statement establishes if that thread is permitted to enter the single section. In a real \texttt{single} clause, the other threads should wait for the single execution to finish. In this case, this behavior is not obeyed--the other threads move past the single area, so my implementation essentially forces the \texttt{nowait} clause. This design tradeoff was made due to the complexity of implementing the implied barrier at the end of the single section. It was clear from the assignment that the \texttt{barrier} clause should only be implemented on projects seeking honors credit, so that component was not done here.
 
 \section{Performance}
 This program is not a shining example of efficiency. While it runs very quickly on small inputs, it is unlikely to be successful with large programs due to potentially high memory use. Effort was made to pass vectors by reference (thereby avoiding copies), but this translator should still be restricted to small C++ programs. Additionally, the parser is unlikely to be correct for \emph{all} inputs. It does replicate the OpenMP performance of the sample inputs, but it is easy to tell the program is relatively fragile and is unlikely to succeed on more complicated input files.
 
-\section{Execution}
-The easiest way to observe the program is with the included \texttt{run.sh} shell script (below). The script compiles the program and runs it on a C++ file called \texttt{input.cc}, redirecting the output to \texttt{output.cc}. It then compiles this output program and runs it.
-\lstinputlisting[language=bash]{run.sh}
-
-Alternatively, manual compilation can be achieved using the same commands. A Makefile is included for convenience, but only builds the translator program. It does not run it or supply it with any input, nor does it operate on the resulting file.
 \end{document}
